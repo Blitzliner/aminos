@@ -1,1 +1,22 @@
-{"export_directory": "./analysed/", "file_extension_raw_data": "_Rohdaten.xlsx", "file_extension_analysis": "_Analyse.xlsx", "ignore_samples": ["SIGMA200", "SIGMA500", "Phe200", "Phe1000"]}
+{
+    "columns": {
+        "sample_name": "Sample Name"
+    },
+    "control_name_prefix": "Ko",
+    "control_reference_file_path": "kontrollwerte.csv",
+    "control_ring_samples": [
+        61,
+        62,
+        31,
+        32
+    ],
+    "export_directory": "./analysed/",
+    "file_extension_analysis": "_Analyse.xlsx",
+    "file_extension_raw_data": "_Rohdaten.xlsx",
+    "ignore_samples": [
+        "SIGMA200",
+        "SIGMA500",
+        "Phe200",
+        "Phe1000"
+    ]
+}
