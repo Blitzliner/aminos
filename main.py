@@ -126,8 +126,6 @@ def check_controls(cfg, controls, control_reference):
     return ret
 
 def select_control(cfg, controls, checked_controls):
-    print(checked_controls)
-    print(controls)
     dat = {}
     for ring in cfg['control_ring_samples']:
         column_name = cfg['columns']['sample_name']
@@ -141,7 +139,7 @@ def select_control(cfg, controls, checked_controls):
             ring_data['score'] = counts[(counts.index == 'NORMAL')]
             dat[str(ring)] = ring_data
             
-    print(dat)
+    return dat
 
 def main():
     _logger.info("start AMINOS tool")
@@ -150,7 +148,6 @@ def main():
     
     raw_data_file = 'rohdaten_example.xlsx'
     
-    
     export_dir, excel_sheet_name = preparation(cfg, raw_data_file)
     excel_path = os.path.join(export_dir, excel_sheet_name)
     data = {}
@@ -158,10 +155,10 @@ def main():
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_control_reference_data(cfg['control_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
-
-    #data['checked_controls = 
-    ret = select_control(cfg, data['controls'], data['checked_controls'])
+    data['controls_counted'] = select_control(cfg, data['controls'], data['checked_controls'])
     
+    print(data)
+    #print(data['controls_counted'])
     #print(data['control_reference'])
     #print(data['checked_controls'])
     #print(data.head())#.head())
@@ -169,7 +166,6 @@ def main():
     
     _logger.info("export to excel sheet")
     excel.export(cfg, excel_path, data['raw_data'], data['data'], data['controls'], data['checked_controls'])
-    
     
     
 if __name__== "__main__":
