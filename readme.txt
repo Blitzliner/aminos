@@ -10,11 +10,10 @@ x      - dann alle Patientennummern aufsteigend	71420026, 71420027, 71420028, �
     3. Kontrollen kontrollieren	
 x      - alle AS einer Kontrolle mit der Grenzwert-Datei vergleichen	Ala: 54, untere grenze: 53, obere Grenze 59
 x      - wenn zu hoch = rot markieren, zu niedirg = blau, okay = grün	grün
-       - anzeigen, wie viele von Ko I drin sind und wie viele von Ko 2 drin/zu hoch/niedrig sind	3 zu hoch, 3 zu niedirg, 20 okay von Ko I, Ko II das gleiche
-       - wenn eine Kontrolle nicht im Grenzbereich ist, schauen ob eine andere mit dem gleichen Namen drin ist 	Thy oder Thy_ph oder Thy_hp4
-       - wenn es eine bessere gibt → austauschen	
-       - am ende eine Kontrolle auswählen, die am besten ist	Ko I (61) oder Ko II (62)
-       - Wenn eine AS nicht rein geht → alle Werte grau markieren	
+x       - anzeigen, wie viele von Ko I drin sind und wie viele von Ko 2 drin/zu hoch/niedrig sind	3 zu hoch, 3 zu niedirg, 20 okay von Ko I, Ko II das gleiche
+x       - wenn eine Kontrolle nicht im Grenzbereich ist, schauen ob eine andere mit dem gleichen Namen drin ist 	Thy oder Thy_ph oder Thy_hp4
+x       - wenn es eine bessere gibt → austauschen	
+x       - am ende eine Kontrolle auswählen, die am besten ist	Ko I (61) oder Ko II (62)
         
     4. Daten übertragen	
        - Patientennummern, die Werte und der Name der ausgetauschen AS in neues Sheet kopieren und transponieren	Spalten sind die Nummern, Zeilen die AS
@@ -23,6 +22,9 @@ x      - wenn zu hoch = rot markieren, zu niedirg = blau, okay = grün	grün
        - Die grau markierten AS bleiben grau	
        - Die anderen werden mit den Normwerten abgeglichen: zu hoch: rot, zu niedrig: blau	
         
+Darstellung:
     5. PDF erstellen und drucken	
        - Eine PDF von den ganzen Patientendaten erstellen und das Kontrollenblatt anhängen	KO sind immernoch grau
        - PDF öffnen	
+
+       - Wenn eine AS nicht rein geht → alle Werte grau markieren	

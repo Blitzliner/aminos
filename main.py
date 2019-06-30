@@ -23,6 +23,7 @@ def read_config(config_file = 'config.json'):
     data['ignore_samples'] = ['SIGMA200', 'SIGMA500', 'Phe200', 'Phe1000']
     data['control_name_prefix'] = 'Ko'
     data['control_ring_samples'] = [61, 62, 31, 32]
+    data['max_normal_aminos'] = 21
     data['control_reference_file_path'] = 'kontrollwerte.csv'
     columns = {}
     columns['sample_name'] = 'Sample Name'
@@ -127,8 +128,14 @@ def check_controls(cfg, controls, control_reference):
 
 def select_control(cfg, controls, checked_controls):
     dat = {}
+    best_control = [0, 0]
+    second_best_control = [0, 0]
+    #max_prios_score = 0
+    #best_control = 0
+    dat['data'] = {}
     for ring in cfg['control_ring_samples']:
         column_name = cfg['columns']['sample_name']
+        # split up the controls
         mask = controls[column_name].str.contains(str(ring))
         if any(mask):
             ring_data = {} 
@@ -137,10 +144,62 @@ def select_control(cfg, controls, checked_controls):
             
             counts = ring_data['checked'].apply(pd.value_counts).fillna(0)
             ring_data['score'] = counts[(counts.index == 'NORMAL')]
-            dat[str(ring)] = ring_data
+            dat['data'][str(ring)] = ring_data
             
+            ring_data['prios'] = switch_amino_columns(cfg, ring_data['score'], ring_data['data'])
+            ring_data['prios_score'] = ring_data['prios'].sum(axis = 1, skipna = True).item()
+            _logger.debug(ring_data['prios_score'])
+            
+            if best_control[1] < ring_data['prios_score']:
+                second_best_control = best_control.copy()
+                best_control[1] = ring_data['prios_score'] 
+                best_control[0] = ring
+                
+    dat['best_control_score'] = best_control[1]
+    dat['best_control_name'] = best_control[0]
+    dat['second_best_control_score'] = second_best_control[1]
+    dat['second_best_control_name'] = second_best_control[0]
+    _logger.info(F"1. control: {str(dat['best_control_name'])}, score: {str(dat['best_control_score'])}")
+    _logger.info(F"2. control: {str(dat['second_best_control_name'])}, score: {str(dat['second_best_control_score'])}")
     return dat
 
+def switch_amino_columns(cfg, score, control):
+    ret = pd.DataFrame().reindex_like(score)
+    
+    for col in score.columns:
+        if (score.columns.get_loc(col) <= cfg['max_normal_aminos']):
+            aminos = score.columns.str.contains(col)
+            idx_name = score[score.columns[aminos]].idxmax(axis=1)
+            ret[idx_name] = score[idx_name]# we have three matches
+    
+    return ret      
+
+def filter_patients_data(data):
+    
+    best_control = str(data['selected_control']['best_control_name'])
+    dat = data['selected_control']['data'][best_control]['prios']
+    
+    idx_not_null = dat.isnull() == False
+    idx_zero = dat == 0
+    
+    idx_valids = []
+    for idx, val in idx_not_null.T.iterrows(): 
+        if val.item() == True:
+            idx_valids.append(idx_not_null.columns.get_loc(idx))
+    
+    print(idx_valids) 
+    patients = data['data'].copy()
+    #patients.loc[:, [idx_valids]]
+    patients = patients[patients.columns[idx_valids]]
+    
+    _logger.info("sorting patients data") 
+    lis = list(patients.columns.values)
+    sorted_cols = lis[0:2] # ignore first two columns
+    aminos_sorted = sorted(patients.columns[2:])
+    sorted_cols.extend(aminos_sorted)
+    new_patients = patients.reindex(sorted_cols, axis=1)
+    return (new_patients)
+    
 def main():
     _logger.info("start AMINOS tool")
     
@@ -155,9 +214,32 @@ def main():
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_control_reference_data(cfg['control_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
-    data['controls_counted'] = select_control(cfg, data['controls'], data['checked_controls'])
+    data['selected_control'] = select_control(cfg, data['controls'], data['checked_controls'])
+    data['data_filtered'] = filter_patients_data(data)
     
-    print(data)
+    
+    
+    
+    #idx_valids = [idx for idx in idx_not_null.T.itertuples() if idx_not_null[idx] == True]
+   # 
+   # #idx_not_null.index[idx_not_null]
+   # 
+   # idx_not_null.columns.get_loc(idx_not_null)
+   # dat[dat.columns.isin(['Ala', 'Tyr'])]
+   # 
+   # patients[patients.columns[]]
+   # 
+   # patients = data['data']
+   # patients.loc[:, ['Ala', 'Tyr']]
+    
+    
+   # idx_not_null.all(0)
+    
+    
+   # len(idx_not_null.columns)
+   # len(idx_not_null.T)
+   # col_not_null = dat.columns
+   # print(data)
     #print(data['controls_counted'])
     #print(data['control_reference'])
     #print(data['checked_controls'])
@@ -165,7 +247,7 @@ def main():
     #print(data['controls'])#.head())
     
     _logger.info("export to excel sheet")
-    excel.export(cfg, excel_path, data['raw_data'], data['data'], data['controls'], data['checked_controls'])
+    excel.export(cfg, excel_path, data)
     
     
 if __name__== "__main__":

@@ -18,5 +18,6 @@
         "SIGMA500",
         "Phe200",
         "Phe1000"
-    ]
+    ],
+    "max_normal_aminos": 21
 }
