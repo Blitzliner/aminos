@@ -25,6 +25,7 @@ def read_config(config_file = 'config.json'):
     data['control_ring_samples'] = [61, 62, 31, 32]
     data['max_normal_aminos'] = 21
     data['control_reference_file_path'] = 'kontrollwerte.csv'
+    data['patients_reference_file_path'] = 'patienten_kontrollwerte.csv'
     columns = {}
     columns['sample_name'] = 'Sample Name'
     data['columns'] = columns
@@ -34,14 +35,15 @@ def read_config(config_file = 'config.json'):
             
     return data
 
-def read_control_reference_data(filepath):
-    _logger.info("read control reference data")
+def read_reference_data(filepath):
+    _logger.info(F"read {filepath} reference data")
     data = {}
     if os.path.isfile(filepath):
         data = pd.read_csv(filepath) 
     else:
         _logger.error(F"could not read control reference data. File is missing: {filepath}")    
     return data
+
     
 def read_raw_data(filepath):
     _logger.info("read raw data")
@@ -175,7 +177,6 @@ def switch_amino_columns(cfg, score, control):
     return ret      
 
 def filter_patients_data(data):
-    
     best_control = str(data['selected_control']['best_control_name'])
     dat = data['selected_control']['data'][best_control]['prios']
     
@@ -187,7 +188,11 @@ def filter_patients_data(data):
         if val.item() == True:
             idx_valids.append(idx_not_null.columns.get_loc(idx))
     
-    print(idx_valids) 
+    idx_invalids = []
+    for idx, val in idx_zero.T.iloc[2:].iterrows(): 
+        if val.item() == True:
+            idx_invalids.append(idx_zero.columns.get_loc(idx))
+    
     patients = data['data'].copy()
     #patients.loc[:, [idx_valids]]
     patients = patients[patients.columns[idx_valids]]
@@ -198,7 +203,7 @@ def filter_patients_data(data):
     aminos_sorted = sorted(patients.columns[2:])
     sorted_cols.extend(aminos_sorted)
     new_patients = patients.reindex(sorted_cols, axis=1)
-    return (new_patients)
+    return (new_patients, idx_invalids)
     
 def main():
     _logger.info("start AMINOS tool")
@@ -212,34 +217,14 @@ def main():
     data = {}
     data['raw_data'] = read_raw_data(raw_data_file)
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
-    data['control_reference'] = read_control_reference_data(cfg['control_reference_file_path'])
+    data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
+    data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
     data['selected_control'] = select_control(cfg, data['controls'], data['checked_controls'])
-    data['data_filtered'] = filter_patients_data(data)
+    data['data_filtered'], data['idx_invalids'] = filter_patients_data(data)
     
-    
-    
-    
-    #idx_valids = [idx for idx in idx_not_null.T.itertuples() if idx_not_null[idx] == True]
-   # 
-   # #idx_not_null.index[idx_not_null]
-   # 
-   # idx_not_null.columns.get_loc(idx_not_null)
-   # dat[dat.columns.isin(['Ala', 'Tyr'])]
-   # 
-   # patients[patients.columns[]]
-   # 
-   # patients = data['data']
-   # patients.loc[:, ['Ala', 'Tyr']]
-    
-    
-   # idx_not_null.all(0)
-    
-    
-   # len(idx_not_null.columns)
-   # len(idx_not_null.T)
-   # col_not_null = dat.columns
-   # print(data)
+
+    #print(data)
     #print(data['controls_counted'])
     #print(data['control_reference'])
     #print(data['checked_controls'])

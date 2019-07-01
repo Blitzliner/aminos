@@ -19,5 +19,6 @@
         "Phe200",
         "Phe1000"
     ],
-    "max_normal_aminos": 21
+    "max_normal_aminos": 21,
+    "patients_reference_file_path": "patienten_kontrollwerte.csv"
 }
