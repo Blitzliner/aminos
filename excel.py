@@ -30,7 +30,7 @@ def write_controls_data(workbook, data, cfg):
      
     splitted_controls = data['selected_control']['data']
     first = F"1. Wahl: Kontrolle: {str(data['selected_control']['best_control_name'])} Score: {str(data['selected_control']['best_control_score'])}"
-    second = F"1. Wahl: Kontrolle: {str(data['selected_control']['second_best_control_name'])} Score: {str(data['selected_control']['second_best_control_score'])}"
+    second = F"2. Wahl: Kontrolle: {str(data['selected_control']['second_best_control_name'])} Score: {str(data['selected_control']['second_best_control_score'])}"
     ws_controls.write(0, 0, first, fmt_heading)
     ws_controls.write(1, 0, second, fmt_heading)
     
@@ -110,9 +110,9 @@ def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
     if fmt_nr == -1:
         fmt = wb.add_format(cfg['format_number_invalid'])
     elif fmt_nr == 1:
-        fmt = wb.add_format(cfg['format_number_high'])
-    elif fmt_nr == 2:
         fmt = wb.add_format(cfg['format_number_low'])
+    elif fmt_nr == 2:
+        fmt = wb.add_format(cfg['format_number_high'])
     elif fmt_nr == 3:
         fmt = wb.add_format(cfg['format_heading'])
     else:

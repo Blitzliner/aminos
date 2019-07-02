@@ -13,6 +13,7 @@
     "export_directory": "./analysed/",
     "file_extension_analysis": "_Analyse.xlsx",
     "file_extension_raw_data": "_Rohdaten.xlsx",
+    "file_to_analyze": "rohdaten_example.xlsx",
     "format_heading": {
         "bold": true
     },

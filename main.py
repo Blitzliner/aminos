@@ -5,6 +5,7 @@ import os
 import datetime
 import pandas as pd
 from shutil import copyfile
+import gui
 
 logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=logging.INFO)
 _logger = logging.getLogger("main")
@@ -17,6 +18,7 @@ def read_config(config_file = 'config.json', create_new_file=False):
     else:
         _logger.warning("config file does not exist. A default config file has been created.")
         data = {}
+        data['file_to_analyze'] = 'rohdaten_example.xlsx'
         data['export_directory'] = './analysed/'
         data['file_extension_raw_data'] = '_Rohdaten.xlsx'
         data['file_extension_analysis'] = '_Analyse.xlsx'
@@ -26,8 +28,8 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['max_normal_aminos'] = 21
         data['control_reference_file_path'] = 'kontrollwerte.csv'
         data['patients_reference_file_path'] = 'patienten_kontrollwerte.csv'
-        data['format_heading'] = {'bold': True}
-        data['format_number_invalid'] = {'bg_color': '#d1d8e0', 'bg_color': '#d1d8e0'}
+        data['format_heading'] = {'bold': True} #, 'bg_color': '#f1f2f6'
+        data['format_number_invalid'] = {'bg_color': '#d1d8e0'}
         data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
         data['format_number_high'] = {'bg_color': '#fc5c65'}
         data['format_number_low'] = {'bg_color': '#45aaf2'} 
@@ -47,7 +49,7 @@ def read_reference_data(filepath):
     if os.path.isfile(filepath):
         data = pd.read_csv(filepath) 
     else:
-        _logger.error(F"could not read control reference data. File is missing: {filepath}")    
+        _logger.error(F"could not read reference data. File is missing: {filepath}")    
     return data
 
     
@@ -167,8 +169,14 @@ def select_control(cfg, controls, checked_controls):
     dat['best_control_name'] = best_control[0]
     dat['second_best_control_score'] = second_best_control[1]
     dat['second_best_control_name'] = second_best_control[0]
+    
+    if dat['best_control_score'] == dat['best_control_name']:
+        _logger.warnung("both controls does have the same score, took first")
     _logger.info(F"1. control: {str(dat['best_control_name'])}, score: {str(dat['best_control_score'])}")
     _logger.info(F"2. control: {str(dat['second_best_control_name'])}, score: {str(dat['second_best_control_score'])}")
+    
+    #print(dat['data'])
+    
     return dat
 
 def switch_amino_columns(cfg, score, control):
@@ -178,7 +186,13 @@ def switch_amino_columns(cfg, score, control):
         if (score.columns.get_loc(col) <= cfg['max_normal_aminos']):
             aminos = score.columns.str.contains(col)
             idx_name = score[score.columns[aminos]].idxmax(axis=1)
-            ret[idx_name] = score[idx_name]# we have three matches
+            # check for equal amino pairs 
+            for col in score[score.columns[aminos]].columns:
+                if col == idx_name.item():
+                    continue
+                if score[col].item() == score[idx_name.item()].item() and score[col].item() != 0:
+                    _logger.warning(F"Potential conflict with {col} and {idx_name.item()} with score {score[col].item()}, took {idx_name.item()}")
+            ret[idx_name] = score[idx_name]
     
     return ret      
 
@@ -217,19 +231,20 @@ def main():
     
     cfg = read_config()
     
-    raw_data_file = 'rohdaten_example.xlsx'
+    #gui.display(cfg)
     
-    export_dir, excel_sheet_name = preparation(cfg, raw_data_file)
+    export_dir, excel_sheet_name = preparation(cfg, cfg['file_to_analyze'])
     excel_path = os.path.join(export_dir, excel_sheet_name)
     
     data = {}
-    data['raw_data'] = read_raw_data(raw_data_file)
+    data['raw_data'] = read_raw_data(cfg['file_to_analyze'])
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
     data['selected_control'] = select_control(cfg, data['controls'], data['checked_controls'])
     data['data_filtered'], data['idx_invalids'] = filter_patients_data(data)
+    
     _logger.debug(data)
     
     excel.export(cfg, excel_path, data)
