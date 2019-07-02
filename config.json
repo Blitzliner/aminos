@@ -13,6 +13,21 @@
     "export_directory": "./analysed/",
     "file_extension_analysis": "_Analyse.xlsx",
     "file_extension_raw_data": "_Rohdaten.xlsx",
+    "format_heading": {
+        "bold": true
+    },
+    "format_number_high": {
+        "bg_color": "#fc5c65"
+    },
+    "format_number_invalid": {
+        "bg_color": "#d1d8e0"
+    },
+    "format_number_low": {
+        "bg_color": "#45aaf2"
+    },
+    "format_number_valid": {
+        "bg_color": "#2bcbba"
+    },
     "ignore_samples": [
         "SIGMA200",
         "SIGMA500",

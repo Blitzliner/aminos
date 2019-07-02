@@ -1,65 +1,66 @@
 import xlsxwriter
 import pandas as pd
+import logging
+_logger = logging.getLogger("excel")
 
-def export(cfg, filename, data):
-    raw_data = data['raw_data']
-    cleaned_data = data['data']
-    controls = data['controls']
-    checked_controls = data['checked_controls']
+def export(cfg, filename, data):    
     workbook = xlsxwriter.Workbook(filename)
     
-    ws_raw_data = workbook.add_worksheet('Rohdaten')
-    ws_controls = workbook.add_worksheet('Kontrollen')
-    ws_patients = workbook.add_worksheet('Patienten')
-    
-    cell_format_bold = workbook.add_format({'bold': True}) #, 'italic': True})
-    
     # write raw data
-    write_maxtrix(0, 0, raw_data, ws_raw_data, format_header=cell_format_bold)
-    
+    _logger.info("write raw data to excel")
+    write_raw_data(workbook, data, cfg)
+        
     # write controls
-    #last_idx = write_maxtrix(0, 0, controls, ws_controls, format_header=cell_format_bold)
-    #last_idx = 0
+    _logger.info("write controls data to excel")
+    write_controls_data(workbook, data, cfg)
+   
+    _logger.info("write patients data")
+    write_patients_data(workbook, data, cfg)
+    
+    workbook.close()
+
+def write_raw_data(workbook, data, cfg):
+    ws_raw_data = workbook.add_worksheet('Rohdaten')
+    fmt_heading = workbook.add_format(cfg['format_heading'])
+    write_maxtrix(0, 0, data['raw_data'], ws_raw_data, format_header=fmt_heading)
+
+def write_controls_data(workbook, data, cfg):
+    ws_controls = workbook.add_worksheet('Kontrollen')    
+    fmt_heading = workbook.add_format(cfg['format_heading'])
+     
     splitted_controls = data['selected_control']['data']
     first = F"1. Wahl: Kontrolle: {str(data['selected_control']['best_control_name'])} Score: {str(data['selected_control']['best_control_score'])}"
     second = F"1. Wahl: Kontrolle: {str(data['selected_control']['second_best_control_name'])} Score: {str(data['selected_control']['second_best_control_score'])}"
-    ws_controls.write(0, 0, first, cell_format_bold)
-    ws_controls.write(1, 0, second, cell_format_bold)
-    #ws_controls.write(2, 0, "Score: " + str(data['selected_control']['best_control_score']))
-    #ws_controls.write(4, 0, "2. Wahl: ", cell_format_bold)
-    #ws_controls.write(5, 0, "Kontrolle: " + str(data['selected_control']['second_best_control_name']))
-    #ws_controls.write(6, 0, "Score: " + str(data['selected_control']['second_best_control_score']))
+    ws_controls.write(0, 0, first, fmt_heading)
+    ws_controls.write(1, 0, second, fmt_heading)
+    
     last_idx = 1
     for key in splitted_controls:
-        ws_controls.write(last_idx+2, 0, "Rohdaten für Kontrolle: " + str(key), cell_format_bold)
-        last_idx = write_maxtrix(last_idx+3, 0, splitted_controls[str(key)]['data'], ws_controls, format_header=cell_format_bold)
+        ws_controls.write(last_idx+2, 0, "Rohdaten für Kontrolle: " + str(key), fmt_heading)
+        last_idx = write_maxtrix(last_idx+3, 0, splitted_controls[str(key)]['data'], ws_controls, format_header=fmt_heading)
         
-        ws_controls.write(last_idx+1, 0, "Bereichsanalyse", cell_format_bold)
-        last_idx = write_maxtrix(last_idx+2, 0, splitted_controls[str(key)]['checked'], ws_controls, format_header=cell_format_bold)
+        ws_controls.write(last_idx+1, 0, "Bereichsanalyse", fmt_heading)
+        last_idx = write_maxtrix(last_idx+2, 0, splitted_controls[str(key)]['checked'], ws_controls, format_header=fmt_heading)
         
-        ws_controls.write(last_idx+1, 0, "Wie viele sind im Normbereich?", cell_format_bold)
-        last_idx = write_maxtrix(last_idx+2, 0, splitted_controls[str(key)]['score'], ws_controls, format_header=cell_format_bold)
+        ws_controls.write(last_idx+1, 0, "Wie viele sind im Normbereich?", fmt_heading)
+        last_idx = write_maxtrix(last_idx+2, 0, splitted_controls[str(key)]['score'], ws_controls, format_header=fmt_heading)
         
-        ws_controls.write(last_idx+1, 0, "Priorisierung der AS", cell_format_bold)
+        ws_controls.write(last_idx+1, 0, "Priorisierung der AS", fmt_heading)
         prios = splitted_controls[str(key)]['prios']
         greater_zero = prios > 0
-        equal_zero = prios == 0
         prios[greater_zero] = 'okay'
-        
         prios.replace(0, 'unpassend', inplace=True)
-        #prios[equal_zero] = 'unpassend'
         prios = prios.fillna('ignoriert')
-        last_idx = write_maxtrix(last_idx+2, 0, prios, ws_controls, format_header=cell_format_bold)
-        #print( data['selected_control'][key])
-        
-    #########################################################################
-    # Patients sheet
-    #########################################################################
+        last_idx = write_maxtrix(last_idx+2, 0, prios, ws_controls, format_header=fmt_heading)
+
+def write_patients_data(workbook, data, cfg):    
+    ws_patients = workbook.add_worksheet('Patienten')
+    fmt_heading = workbook.add_format(cfg['format_heading'])
     # write additional infos to the the patient sheet
     ws_patients.write(0,0,"Messergebnisse des Aminosäure-Screenings")
-    ws_patients.write(1,0,"Normbereich", cell_format_bold)
-    ws_patients.write(2,0,"min", cell_format_bold)
-    ws_patients.write(2,1,"max", cell_format_bold)
+    ws_patients.write(1,0,"Normbereich", fmt_heading)
+    ws_patients.write(2,0,"min", fmt_heading)
+    ws_patients.write(2,1,"max", fmt_heading)
 	    
     #format the patient data
     patients = data['data_filtered']
@@ -81,16 +82,16 @@ def export(cfg, filename, data):
     idx_row = 2
     idx_col = offset_col
     second_part = 0
-    fmt_bold = workbook.add_format({'bold': True})
+    fmt_bold = workbook.add_format(cfg['format_heading'])
     ws_patients.write_column(idx_row+2, idx_col-1, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
     ws_patients.write_column(idx_row+2, idx_col+9, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
     ws_patients.write_column(idx_row+2, idx_col-3, data['patients_reference'].loc[1,:])
     ws_patients.write_column(idx_row+2, idx_col-4, data['patients_reference'].loc[0,:])
     
     for (idx, row) in data['data_filtered'].iterrows():
-        help_write(workbook, ws_patients, idx_row, idx_col+second_part, row.iloc[1], 3)    # patient id
+        help_write(cfg, workbook, ws_patients, idx_row, idx_col+second_part, row.iloc[1], 3)    # patient id
         for idx_as in range(2, 22):                             # write aminos
-            help_write(workbook, ws_patients, idx_row+idx_as, idx_col+second_part, row.iloc[idx_as], fmt.loc[idx][idx_as])
+            help_write(cfg, workbook, ws_patients, idx_row+idx_as, idx_col+second_part, row.iloc[idx_as], fmt.loc[idx][idx_as])
         
         idx_col += 1
         if idx_col%(4+offset_col) == 0: # first four patients are printed, an empty columns follows
@@ -105,17 +106,15 @@ def export(cfg, filename, data):
             ws_patients.write_column(idx_row+2, idx_col-4, data['patients_reference'].loc[0,:])
     
     
-    workbook.close()
-
-def help_write(wb, ws, idx_r, idx_c, val, fmt_nr):
+def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
     if fmt_nr == -1:
-        fmt = wb.add_format({'bg_color': 'gray'})
+        fmt = wb.add_format(cfg['format_number_invalid'])
     elif fmt_nr == 1:
-        fmt = wb.add_format({'bg_color': 'red'})
+        fmt = wb.add_format(cfg['format_number_high'])
     elif fmt_nr == 2:
-        fmt = wb.add_format({'bg_color': 'green'})
+        fmt = wb.add_format(cfg['format_number_low'])
     elif fmt_nr == 3:
-        fmt = wb.add_format({'bold': True})
+        fmt = wb.add_format(cfg['format_heading'])
     else:
         fmt = {}
     ws.write(idx_r, idx_c, val, fmt)

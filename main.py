@@ -9,29 +9,35 @@ from shutil import copyfile
 logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=logging.INFO)
 _logger = logging.getLogger("main")
 
-def read_config(config_file = 'config.json'):
+def read_config(config_file = 'config.json', create_new_file=False):
     _logger.info("read config file")
-    #if os.path.isfile(config_file):
-    #    with open(config_file) as json_data_file:
-    #'        data = json.load(json_data_file)
-    #'else:
-    _logger.warning("config file does not exist. A default config file has been created.")
-    data = {}
-    data['export_directory'] = './analysed/'
-    data['file_extension_raw_data'] = '_Rohdaten.xlsx'
-    data['file_extension_analysis'] = '_Analyse.xlsx'
-    data['ignore_samples'] = ['SIGMA200', 'SIGMA500', 'Phe200', 'Phe1000']
-    data['control_name_prefix'] = 'Ko'
-    data['control_ring_samples'] = [61, 62, 31, 32]
-    data['max_normal_aminos'] = 21
-    data['control_reference_file_path'] = 'kontrollwerte.csv'
-    data['patients_reference_file_path'] = 'patienten_kontrollwerte.csv'
-    columns = {}
-    columns['sample_name'] = 'Sample Name'
-    data['columns'] = columns
-    
-    with open(config_file, 'w') as fp:
-        json.dump(data, fp, indent=4, sort_keys=True)
+    if create_new_file == False and os.path.isfile(config_file):
+        with open(config_file) as json_data_file:
+            data = json.load(json_data_file)
+    else:
+        _logger.warning("config file does not exist. A default config file has been created.")
+        data = {}
+        data['export_directory'] = './analysed/'
+        data['file_extension_raw_data'] = '_Rohdaten.xlsx'
+        data['file_extension_analysis'] = '_Analyse.xlsx'
+        data['ignore_samples'] = ['SIGMA200', 'SIGMA500', 'Phe200', 'Phe1000']
+        data['control_name_prefix'] = 'Ko'
+        data['control_ring_samples'] = [61, 62, 31, 32]
+        data['max_normal_aminos'] = 21
+        data['control_reference_file_path'] = 'kontrollwerte.csv'
+        data['patients_reference_file_path'] = 'patienten_kontrollwerte.csv'
+        data['format_heading'] = {'bold': True}
+        data['format_number_invalid'] = {'bg_color': '#d1d8e0', 'bg_color': '#d1d8e0'}
+        data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
+        data['format_number_high'] = {'bg_color': '#fc5c65'}
+        data['format_number_low'] = {'bg_color': '#45aaf2'} 
+        #warning-color: #fd9644, background: #4b6584
+        columns = {}
+        columns['sample_name'] = 'Sample Name'
+        data['columns'] = columns
+        
+        with open(config_file, 'w') as fp:
+            json.dump(data, fp, indent=4, sort_keys=True)
             
     return data
 
@@ -183,6 +189,7 @@ def filter_patients_data(data):
     idx_not_null = dat.isnull() == False
     idx_zero = dat == 0
     
+    _logger.info("sort out invalid AS from patients data") 
     idx_valids = []
     for idx, val in idx_not_null.T.iterrows(): 
         if val.item() == True:
@@ -214,6 +221,7 @@ def main():
     
     export_dir, excel_sheet_name = preparation(cfg, raw_data_file)
     excel_path = os.path.join(export_dir, excel_sheet_name)
+    
     data = {}
     data['raw_data'] = read_raw_data(raw_data_file)
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
@@ -222,17 +230,12 @@ def main():
     data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
     data['selected_control'] = select_control(cfg, data['controls'], data['checked_controls'])
     data['data_filtered'], data['idx_invalids'] = filter_patients_data(data)
+    _logger.debug(data)
     
-
-    #print(data)
-    #print(data['controls_counted'])
-    #print(data['control_reference'])
-    #print(data['checked_controls'])
-    #print(data.head())#.head())
-    #print(data['controls'])#.head())
-    
-    _logger.info("export to excel sheet")
     excel.export(cfg, excel_path, data)
+    
+    
+    _logger.info("finished analyses")
     
     
 if __name__== "__main__":

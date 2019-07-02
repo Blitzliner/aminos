@@ -15,16 +15,16 @@ x       - wenn eine Kontrolle nicht im Grenzbereich ist, schauen ob eine andere 
 x       - wenn es eine bessere gibt → austauschen	
 x       - am ende eine Kontrolle auswählen, die am besten ist	Ko I (61) oder Ko II (62)
         
-    4. Daten übertragen	
-       - Patientennummern, die Werte und der Name der ausgetauschen AS in neues Sheet kopieren und transponieren	Spalten sind die Nummern, Zeilen die AS
-       - Immer 4 Patienten, eine Leerspalte, wieder 4 Patienten auf eine DINA4 Seite ablegen	
-       - Immer 3 Zeilen zusammenlegen, dann eine Leerzeil (letzte hat nur 2 AS)	
-       - Die grau markierten AS bleiben grau	
-       - Die anderen werden mit den Normwerten abgeglichen: zu hoch: rot, zu niedrig: blau	
+x    4. Daten übertragen	
+x       - Patientennummern, die Werte und der Name der ausgetauschen AS in neues Sheet kopieren und transponieren	Spalten sind die Nummern, Zeilen die AS (Darstellung)
+x       - Immer 4 Patienten, eine Leerspalte, wieder 4 Patienten auf eine DINA4 Seite ablegen	(Formatierung)
+x       - Immer 3 Zeilen zusammenlegen, dann eine Leerzeil (letzte hat nur 2 AS)	(Formatierung)
+x       - Die grau markierten AS bleiben grau	(Formatierung)
+x       - Die anderen werden mit den Normwerten abgeglichen: zu hoch: rot, zu niedrig: blau	(Formatierung)
         
 Darstellung:
     5. PDF erstellen und drucken	
        - Eine PDF von den ganzen Patientendaten erstellen und das Kontrollenblatt anhängen	KO sind immernoch grau
        - PDF öffnen	
 
-       - Wenn eine AS nicht rein geht → alle Werte grau markieren	
+x       - Wenn eine AS nicht rein geht → alle Werte grau markieren	
