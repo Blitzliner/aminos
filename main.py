@@ -231,8 +231,6 @@ def main():
     
     cfg = read_config()
     
-    #gui.display(cfg)
-    
     export_dir, excel_sheet_name = preparation(cfg, cfg['file_to_analyze'])
     excel_path = os.path.join(export_dir, excel_sheet_name)
     
