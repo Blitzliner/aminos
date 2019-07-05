@@ -5,10 +5,19 @@ import os
 import datetime
 import pandas as pd
 from shutil import copyfile
-import gui
 
-logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=logging.INFO)
+#setup logger for console and file
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
+
 _logger = logging.getLogger("main")
+logFormatter = logging.Formatter("%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s")
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+consoleHandler.setLevel("INFO")
+_logger.addHandler(consoleHandler)
+
+#logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=logging.INFO)
+#_logger = logging.getLogger("main")
 
 def read_config(config_file = 'config.json', create_new_file=False):
     _logger.info("read config file")
@@ -33,6 +42,8 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
         data['format_number_high'] = {'bg_color': '#fc5c65'}
         data['format_number_low'] = {'bg_color': '#45aaf2'} 
+        data['prefer_control'] = 0
+        data['prefer_aminos'] = []
         #warning-color: #fd9644, background: #4b6584
         columns = {}
         columns['sample_name'] = 'Sample Name'
@@ -96,7 +107,9 @@ def filter_raw_data(cfg, data):
     data.sort_values(column_name, axis=0, ascending=True, inplace=True) # sort ascending
     return data, controls
     
-def check_controls(cfg, controls, control_reference):
+def check_controls(cfg, data):
+    controls = data['controls']
+    control_reference = data['control_reference']
     ret = pd.DataFrame().reindex_like(controls)
     ret[ret.isnull()] = 'NONE'
     
@@ -136,8 +149,10 @@ def check_controls(cfg, controls, control_reference):
                         _logger.debug(F"{col} = {col_name}: {val_min} < {controls[col_name][control_idx_bo].to_string(index=False)} > {val_max}")
     return ret
 
-def select_control(cfg, controls, checked_controls):
+def select_control(cfg, data):
     dat = {}
+    controls = data['controls']
+    checked_controls = data['checked_controls']
     best_control = [0, 0]
     second_best_control = [0, 0]
     #max_prios_score = 0
@@ -156,7 +171,7 @@ def select_control(cfg, controls, checked_controls):
             ring_data['score'] = counts[(counts.index == 'NORMAL')]
             dat['data'][str(ring)] = ring_data
             
-            ring_data['prios'] = switch_amino_columns(cfg, ring_data['score'], ring_data['data'])
+            ring_data['prios'], ring_data['conflicts'] = switch_amino_columns(cfg, ring, ring_data['score'])
             ring_data['prios_score'] = ring_data['prios'].sum(axis = 1, skipna = True).item()
             _logger.debug(ring_data['prios_score'])
             
@@ -164,7 +179,7 @@ def select_control(cfg, controls, checked_controls):
                 second_best_control = best_control.copy()
                 best_control[1] = ring_data['prios_score'] 
                 best_control[0] = ring
-                
+    
     dat['best_control_score'] = best_control[1]
     dat['best_control_name'] = best_control[0]
     dat['second_best_control_score'] = second_best_control[1]
@@ -174,14 +189,12 @@ def select_control(cfg, controls, checked_controls):
         _logger.warnung("both controls does have the same score, took first")
     _logger.info(F"1. control: {str(dat['best_control_name'])}, score: {str(dat['best_control_score'])}")
     _logger.info(F"2. control: {str(dat['second_best_control_name'])}, score: {str(dat['second_best_control_score'])}")
-    
-    #print(dat['data'])
-    
+        
     return dat
 
-def switch_amino_columns(cfg, score, control):
+def switch_amino_columns(cfg, control, score):
     ret = pd.DataFrame().reindex_like(score)
-    
+    conflicts = []
     for col in score.columns:
         if (score.columns.get_loc(col) <= cfg['max_normal_aminos']):
             aminos = score.columns.str.contains(col)
@@ -191,13 +204,29 @@ def switch_amino_columns(cfg, score, control):
                 if col == idx_name.item():
                     continue
                 if score[col].item() == score[idx_name.item()].item() and score[col].item() != 0:
-                    _logger.warning(F"Potential conflict with {col} and {idx_name.item()} with score {score[col].item()}, took {idx_name.item()}")
+                    # take preferation from settings
+                    if len(cfg['prefer_aminos']) > 0:
+                        if (col in cfg['prefer_aminos']): # switch to preferation
+                            _logger.info(F"Take prefered AS from setting {col}")
+                            idx_name = col
+                        elif (idx_name.item() in cfg['prefer_aminos']):
+                            _logger.info(F"Take prefered AS from setting: {idx_name.item()}")
+                            idx_name = idx_name.item()
+                        else:
+                            _logger.warning(F"Prefered AS for control {str(control)} could not be found in settings file. {col} vs {idx_name.item()}")
+                    else:
+                        conflicts.append((idx_name.item(), col))
+                        _logger.warning(F"Conflict in control {str(control)} with {idx_name.item()} and {col} (score {score[col].item()}), took {idx_name.item()}")
             ret[idx_name] = score[idx_name]
     
-    return ret      
+    return ret, conflicts       
 
-def filter_patients_data(data):
-    best_control = str(data['selected_control']['best_control_name'])
+def filter_patients_data(cfg, data):
+    # overwrite 
+    if cfg['prefer_control'] != 0:
+        best_control = str(cfg['prefer_control'])
+    else:
+        best_control = str(data['selected_control']['best_control_name'])
     dat = data['selected_control']['data'][best_control]['prios']
     
     idx_not_null = dat.isnull() == False
@@ -225,11 +254,9 @@ def filter_patients_data(data):
     sorted_cols.extend(aminos_sorted)
     new_patients = patients.reindex(sorted_cols, axis=1)
     return (new_patients, idx_invalids)
-    
-def main():
+
+def analyse(cfg):
     _logger.info("start AMINOS tool")
-    
-    cfg = read_config()
     
     export_dir, excel_sheet_name = preparation(cfg, cfg['file_to_analyze'])
     excel_path = os.path.join(export_dir, excel_sheet_name)
@@ -239,17 +266,21 @@ def main():
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
-    data['checked_controls'] = check_controls(cfg, data['controls'], data['control_reference'])
-    data['selected_control'] = select_control(cfg, data['controls'], data['checked_controls'])
-    data['data_filtered'], data['idx_invalids'] = filter_patients_data(data)
+    data['checked_controls'] = check_controls(cfg, data)
+    data['selected_control'] = select_control(cfg, data)
+    data['data_filtered'], data['idx_invalids'] = filter_patients_data(cfg, data)
     
-    _logger.debug(data)
+    # temporaly write into file
+   # with open('data.pickle', 'wb') as handle:
+    #    pickle.dump(data, handle)
+    #_logger.debug(data)
     
     excel.export(cfg, excel_path, data)
     
-    
     _logger.info("finished analyses")
     
+    return data
     
 if __name__== "__main__":
-  main()
+    cfg = read_config()
+    analyse(cfg)

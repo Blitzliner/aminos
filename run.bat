@@ -1,2 +1,2 @@
-python.exe main.py
+python.exe aminos.py
 pause

@@ -36,5 +36,7 @@
         "Phe1000"
     ],
     "max_normal_aminos": 21,
-    "patients_reference_file_path": "patienten_kontrollwerte.csv"
+    "patients_reference_file_path": "patienten_kontrollwerte.csv",
+    "prefer_aminos": [],
+    "prefer_control": 0
 }
