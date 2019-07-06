@@ -96,8 +96,7 @@ class DateDialog(QtWidgets.QDialog):
         
         self.cb_control = QtWidgets.QComboBox()
         self.cb_control.addItems(dat.keys())
-        self.cb_control.currentTextChanged.c1onnect(self.on_control_changed)
-        self.cb_control.setCurrentIndex(self.cb_control.findText(best_control))
+        self.cb_control.currentTextChanged.connect(self.on_control_changed)
         
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, QtCore.Qt.Horizontal, self)
         buttons.accepted.connect(self.accept)
@@ -107,11 +106,12 @@ class DateDialog(QtWidgets.QDialog):
         l_control = QtWidgets.QLabel('Kontrolle:')
         export_dir = results['export_dir']#.replace('\\', '/')
         #export_excel_path = results['export_excel_path'].replace('\\', '/')
-        description = F"Erste Analyse fertig. Die Kontrolle {best_control} mit dem Score {best_control_score} wurde dafür gewählt."
+        description = F"Die Analyse mit der Kontrolle {best_control} ist fertig."
         l_description = QtWidgets.QLabel(description)
-        l_export_dir = QtWidgets.QLabel(F"Die Analyse Ergebnisse liegen unter:\n{export_dir}\n\nIm Folgenden, ist eine Auswahl der gefundenen Kontrollen. Für jede Kontrolle wird aufgelistet, welche Aminosäuren einen gleichen Punktestand erzielt haben. Diese können für die nächste Analyse hier priorisiert werden.")
+        l_export_dir = QtWidgets.QLabel(F"Die Ergebnisse liegen unter:\n{export_dir}\n\nFalls die Analyse mit anderen Kontrollen durchlaufen werden soll, bitte auswählen:")
         l_export_dir.setWordWrap(True)
-        l_new_analyse = QtWidgets.QLabel("Wähle okay für eine erneute Analyse mit den gewählten Paramtern.")
+        l_new_analyse = QtWidgets.QLabel("Wähle OK für eine erneute Analyse mit den ausgewählten Parametern oder Cancel um das Program zu beenden.")
+        l_new_analyse.setWordWrap(True)
         #l_export_dir.setOpenExternalLinks(True)
         #l_export_excel_path = QtWidgets.QLabel("<a href=\"file:///{export_excel_path}\">Öffne Excel Analyse</a>")
         #l_export_excel_path.setOpenExternalLinks(True)
@@ -151,6 +151,8 @@ class DateDialog(QtWidgets.QDialog):
             
             main_layout.addWidget(gb, gb_idx, 0, 1, 2)
             gb_idx += 1
+    
+        self.cb_control.setCurrentIndex(self.cb_control.findText(best_control))
             
     def on_control_changed(self):
         for key in self.gbs.keys():
