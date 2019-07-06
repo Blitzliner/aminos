@@ -28,3 +28,13 @@ Darstellung:
        - PDF öffnen	
 
 x       - Wenn eine AS nicht rein geht → alle Werte grau markieren	
+
+
+dependencies
+Python 3.6
+pip.exe install :
+xlsxwriter
+PyQt5
+pandas
+xlrd
+pyinstaller

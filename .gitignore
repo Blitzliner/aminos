@@ -1,2 +1,7 @@
 __pycache__
+scripts/build
+scripts/dist
+scripts/__pycache__
+scripts/logger.log
+scripts/config.json
 analysed

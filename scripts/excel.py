@@ -6,16 +6,17 @@ _logger = logging.getLogger("excel")
 def export(cfg, filename, data):    
     workbook = xlsxwriter.Workbook(filename)
     
-    # write raw data
     _logger.info("write raw data to excel")
     write_raw_data(workbook, data, cfg)
         
-    # write controls
     _logger.info("write controls data to excel")
     write_controls_data(workbook, data, cfg)
    
     _logger.info("write patients data")
     write_patients_data(workbook, data, cfg)
+    
+    _logger.info("write control data")
+    write_control_data(workbook, data, cfg)
     
     workbook.close()
 
@@ -105,7 +106,11 @@ def write_patients_data(workbook, data, cfg):
             ws_patients.write_column(idx_row+2, idx_col-3, data['patients_reference'].loc[1,:])
             ws_patients.write_column(idx_row+2, idx_col-4, data['patients_reference'].loc[0,:])
     
-    
+def write_control_data(wb, data, cfg):    
+    ws = wb.add_worksheet('Gewählte Kontrolle')
+    fmt_heading = wb.add_format(cfg['format_heading'])
+    write_maxtrix(0, 0, data['control_filtered'], ws, format_header=fmt_heading)
+         
 def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
     if fmt_nr == -1:
         fmt = wb.add_format(cfg['format_number_invalid'])

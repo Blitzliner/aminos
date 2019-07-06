@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import aminos
 import logging
+import subprocess
 
 _logger = logging.getLogger("gui")
 
@@ -60,38 +61,43 @@ class MainGui(QtWidgets.QDialog):
             self.button.setText("Bitte wähle eine Datei aus.")
         else:
             
-            with open('data.pickle', 'rb') as handle:
+            #with open('data.pickle', 'rb') as handle:
                 #results = pickle.load(handle)
+            cfg = aminos.read_config()
+            cfg["file_to_analyze"] = self.button.get_path()
+            results = aminos.analyse(cfg)
+            #open_path = results['export_excel_path']
+            #subprocess.Popen(['explorer.exe', '/select,"{open_path}"'])
+            conflicts, ret = DateDialog.ShowDialog(results)
+            _logger.info(conflicts)
+            
+            if (ret == True):
+                _logger.info("re-run with prefered control and AS")
                 cfg = aminos.read_config()
-                cfg["file_to_analyze"] = self.button.get_path()
-                results = aminos.analyse(cfg)
-                conflicts, ret = DateDialog.ShowDialog(results)
-                _logger.info(conflicts)
-                
-                if (ret == True):
-                    _logger.info("re-run with prefered control and AS")
-                    cfg = aminos.read_config()
-                    cfg['prefer_control'] = conflicts[0]
-                    cfg['prefer_aminos'] = conflicts[1]
-                    data = aminos.analyse(cfg)
-                    msgBox = QtWidgets.QMessageBox()
-                    msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.");
-                    msgBox.exec();
-                    self.close()
-                else:
-                    _logger.info("program finished")
-                    self.close()
+                cfg['prefer_control'] = conflicts[0]
+                cfg['prefer_aminos'] = conflicts[1]
+                data = aminos.analyse(cfg)
+                msgBox = QtWidgets.QMessageBox()
+                msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.");
+                msgBox.exec();
+                self.close()
+            else:
+                _logger.info("program finished")
+                self.close()
 
 class DateDialog(QtWidgets.QDialog):
     def __init__(self, results, parent = None):
         super(DateDialog, self).__init__(parent)
-        self.setWindowTitle('Analyse Ergebnisse bewerten')
+        self.setWindowTitle('Analyse Ergebnisse')
         
         dat = results['selected_control']['data']
+        best_control = str(results['selected_control']['best_control_name'])
+        best_control_score = str(results['selected_control']['best_control_score'])
         
         self.cb_control = QtWidgets.QComboBox()
         self.cb_control.addItems(dat.keys())
-        self.cb_control.currentTextChanged.connect(self.on_control_changed)
+        self.cb_control.currentTextChanged.c1onnect(self.on_control_changed)
+        self.cb_control.setCurrentIndex(self.cb_control.findText(best_control))
         
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel, QtCore.Qt.Horizontal, self)
         buttons.accepted.connect(self.accept)
@@ -99,14 +105,27 @@ class DateDialog(QtWidgets.QDialog):
         
         main_layout =  QtWidgets.QGridLayout(self)
         l_control = QtWidgets.QLabel('Kontrolle:')
-        main_layout.addWidget(l_control          , 0, 0)
-        main_layout.addWidget(self.cb_control    , 0, 1)
-        main_layout.addWidget(buttons            , 3, 0, 1, 2)
+        export_dir = results['export_dir']#.replace('\\', '/')
+        #export_excel_path = results['export_excel_path'].replace('\\', '/')
+        description = F"Erste Analyse fertig. Die Kontrolle {best_control} mit dem Score {best_control_score} wurde dafür gewählt."
+        l_description = QtWidgets.QLabel(description)
+        l_export_dir = QtWidgets.QLabel(F"Die Analyse Ergebnisse liegen unter:\n{export_dir}\n\nIm Folgenden, ist eine Auswahl der gefundenen Kontrollen. Für jede Kontrolle wird aufgelistet, welche Aminosäuren einen gleichen Punktestand erzielt haben. Diese können für die nächste Analyse hier priorisiert werden.")
+        l_export_dir.setWordWrap(True)
+        l_new_analyse = QtWidgets.QLabel("Wähle okay für eine erneute Analyse mit den gewählten Paramtern.")
+        #l_export_dir.setOpenExternalLinks(True)
+        #l_export_excel_path = QtWidgets.QLabel("<a href=\"file:///{export_excel_path}\">Öffne Excel Analyse</a>")
+        #l_export_excel_path.setOpenExternalLinks(True)
+        main_layout.addWidget(l_description      , 0, 0, 1, 2)
+        main_layout.addWidget(l_export_dir       , 1, 0, 1, 2)
+        main_layout.addWidget(l_control          , 2, 0)
+        main_layout.addWidget(self.cb_control    , 2, 1)
+        main_layout.addWidget(l_new_analyse      , 5, 0, 1, 2)
+        main_layout.addWidget(buttons            , 6, 0, 1, 2)
         
         #out_str = ""
         self.gbs = {}
         self.aminos = {}
-        gb_idx = 1
+        gb_idx = 3
         first = 1
         for control in dat.keys():
             self.aminos[control] = []

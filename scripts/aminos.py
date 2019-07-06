@@ -7,7 +7,7 @@ import pandas as pd
 from shutil import copyfile
 
 #setup logger for console and file
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
 
 _logger = logging.getLogger("main")
 logFormatter = logging.Formatter("%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s")
@@ -27,16 +27,16 @@ def read_config(config_file = 'config.json', create_new_file=False):
     else:
         _logger.warning("config file does not exist. A default config file has been created.")
         data = {}
-        data['file_to_analyze'] = 'rohdaten_example.xlsx'
-        data['export_directory'] = './analysed/'
+        data['file_to_analyze'] = '../rohdaten_example.xlsx'
+        data['export_directory'] = '../analysed/'
         data['file_extension_raw_data'] = '_Rohdaten.xlsx'
         data['file_extension_analysis'] = '_Analyse.xlsx'
         data['ignore_samples'] = ['SIGMA200', 'SIGMA500', 'Phe200', 'Phe1000']
         data['control_name_prefix'] = 'Ko'
         data['control_ring_samples'] = [61, 62, 31, 32]
         data['max_normal_aminos'] = 21
-        data['control_reference_file_path'] = 'kontrollwerte.csv'
-        data['patients_reference_file_path'] = 'patienten_kontrollwerte.csv'
+        data['control_reference_file_path'] = './reference/kontrollwerte.csv'
+        data['patients_reference_file_path'] = './reference/patienten_kontrollwerte.csv'
         data['format_heading'] = {'bold': True} #, 'bg_color': '#f1f2f6'
         data['format_number_invalid'] = {'bg_color': '#d1d8e0'}
         data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
@@ -55,6 +55,7 @@ def read_config(config_file = 'config.json', create_new_file=False):
     return data
 
 def read_reference_data(filepath):
+    filepath = os.path.abspath(filepath)
     _logger.info(F"read {filepath} reference data")
     data = {}
     if os.path.isfile(filepath):
@@ -78,13 +79,14 @@ def get_timestamp():
     
 def preparation(cfg, raw_data_file):
     _logger.info("prepare output directory and copy raw data")
+    timestamp = get_timestamp()
     export_dir = cfg['export_directory']
-    export_dir = os.path.join(export_dir, get_timestamp())
+    export_dir = os.path.join(export_dir, timestamp)
     if not os.path.isdir(export_dir):
         os.makedirs(export_dir)
-    excel_sheet = get_timestamp() + cfg['file_extension_analysis']
+    excel_sheet = timestamp + cfg['file_extension_analysis']
     
-    raw_copy_filename = get_timestamp() + cfg['file_extension_raw_data']
+    raw_copy_filename = timestamp + cfg['file_extension_raw_data']
     
     copyfile(raw_data_file, os.path.join(export_dir, raw_copy_filename))
     
@@ -245,30 +247,41 @@ def filter_patients_data(cfg, data):
     
     patients = data['data'].copy()
     #patients.loc[:, [idx_valids]]
-    patients = patients[patients.columns[idx_valids]]
+    filtered_patients = patients[patients.columns[idx_valids]]
     
     _logger.info("sorting patients data") 
-    lis = list(patients.columns.values)
+    lis = list(filtered_patients.columns.values)
     sorted_cols = lis[0:2] # ignore first two columns
-    aminos_sorted = sorted(patients.columns[2:])
+    aminos_sorted = sorted(filtered_patients.columns[2:])
     sorted_cols.extend(aminos_sorted)
-    new_patients = patients.reindex(sorted_cols, axis=1)
-    return (new_patients, idx_invalids)
+    new_patients = filtered_patients.reindex(sorted_cols, axis=1)
+    
+    ## prepare columns for best control
+    control = data['selected_control']['data'][best_control]['data'].copy()
+    control = control[patients.columns[idx_valids]]
+    new_control = control.reindex(sorted_cols, axis=1)
+    
+    return (new_patients, idx_invalids, new_control)
 
 def analyse(cfg):
     _logger.info("start AMINOS tool")
     
     export_dir, excel_sheet_name = preparation(cfg, cfg['file_to_analyze'])
-    excel_path = os.path.join(export_dir, excel_sheet_name)
+    export_dir = os.path.abspath(export_dir)
+    excel_path = os.path.abspath(os.path.join(export_dir, excel_sheet_name))
+    _logger.info(export_dir)
+    _logger.info(excel_path)
     
     data = {}
+    data['export_dir'] = export_dir
+    data['export_excel_path'] = excel_path
     data['raw_data'] = read_raw_data(cfg['file_to_analyze'])
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data)
     data['selected_control'] = select_control(cfg, data)
-    data['data_filtered'], data['idx_invalids'] = filter_patients_data(cfg, data)
+    data['data_filtered'], data['idx_invalids'], data['control_filtered'] = filter_patients_data(cfg, data)
     
     # temporaly write into file
    # with open('data.pickle', 'wb') as handle:
