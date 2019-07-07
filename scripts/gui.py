@@ -28,7 +28,7 @@ class Button(QtWidgets.QPushButton):
             filepath = m.urls()[0].toLocalFile()
             print(F"filepath: {filepath}")
             if (os.path.splitext(filepath)[-1].lower() != ".xlsx"):
-                self.setText("Seggl..\n\nBitte Rohdaten im Format *.xlsx wählen!")
+                self.setText("Netter Versuch..\n\nBitte Rohdaten im Format *.xlsx wählen!")
             else:
                 self.setText("Bitte Analyse starten\n\n.." + filepath[-40:])
                 self.raw_data_file_path = filepath
@@ -73,7 +73,6 @@ class MainGui(QtWidgets.QDialog):
             
             if (ret == True):
                 _logger.info("re-run with prefered control and AS")
-                cfg = aminos.read_config()
                 cfg['prefer_control'] = conflicts[0]
                 cfg['prefer_aminos'] = conflicts[1]
                 data = aminos.analyse(cfg)
@@ -108,9 +107,9 @@ class DateDialog(QtWidgets.QDialog):
         #export_excel_path = results['export_excel_path'].replace('\\', '/')
         description = F"Die Analyse mit der Kontrolle {best_control} ist fertig."
         l_description = QtWidgets.QLabel(description)
-        l_export_dir = QtWidgets.QLabel(F"Die Ergebnisse liegen unter:\n{export_dir}\n\nFalls die Analyse mit anderen Kontrollen durchlaufen werden soll, bitte auswählen:")
+        l_export_dir = QtWidgets.QLabel(F"Die Ergebnisse liegen unter:\n{export_dir}\n\nDie besten Aminosäuren wurden bereits ausgetauscht. Es wurden jedoch gleichwertige Kontrollen gefunden. Falls die Analyse mit anderen Kontrollen durchlaufen werden soll, bitte auswählen:")
         l_export_dir.setWordWrap(True)
-        l_new_analyse = QtWidgets.QLabel("Wähle OK für eine erneute Analyse mit den ausgewählten Parametern oder Cancel um das Program zu beenden.")
+        l_new_analyse = QtWidgets.QLabel("Wähle OK für eine erneute Analyse mit den ausgewählten Parametern oder Cancel um das Program zu beenden. Bei OK werden die neuen Ergebnisse in einem neuen Ordner mit aktuellem Zeitstempel abgelegt.")
         l_new_analyse.setWordWrap(True)
         #l_export_dir.setOpenExternalLinks(True)
         #l_export_excel_path = QtWidgets.QLabel("<a href=\"file:///{export_excel_path}\">Öffne Excel Analyse</a>")

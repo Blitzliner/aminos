@@ -38,7 +38,7 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['control_reference_file_path'] = './reference/kontrollwerte.csv'
         data['patients_reference_file_path'] = './reference/patienten_kontrollwerte.csv'
         data['format_heading'] = {'bold': True} #, 'bg_color': '#f1f2f6'
-        data['format_number_invalid'] = {'bg_color': '#d1d8e0'}
+        data['format_number_invalid'] = {'bg_color': '#d1d8e0', 'font_color': '#636e72'}
         data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
         data['format_number_high'] = {'bg_color': '#fc5c65'}
         data['format_number_low'] = {'bg_color': '#45aaf2'} 
@@ -254,6 +254,11 @@ def filter_patients_data(cfg, data):
     sorted_cols = lis[0:2] # ignore first two columns
     aminos_sorted = sorted(filtered_patients.columns[2:])
     sorted_cols.extend(aminos_sorted)
+    #change place of Ile and Leu
+    tmp = sorted_cols[10]
+    sorted_cols[10] = sorted_cols[11]
+    sorted_cols[11] = tmp
+    
     new_patients = filtered_patients.reindex(sorted_cols, axis=1)
     
     ## prepare columns for best control

@@ -22,11 +22,13 @@ def export(cfg, filename, data):
 
 def write_raw_data(workbook, data, cfg):
     ws_raw_data = workbook.add_worksheet('Rohdaten')
+    ws_raw_data.set_landscape()
     fmt_heading = workbook.add_format(cfg['format_heading'])
     write_maxtrix(0, 0, data['raw_data'], ws_raw_data, format_header=fmt_heading)
 
 def write_controls_data(workbook, data, cfg):
     ws_controls = workbook.add_worksheet('Kontrollen')    
+    ws_controls.set_landscape()
     fmt_heading = workbook.add_format(cfg['format_heading'])
      
     splitted_controls = data['selected_control']['data']
@@ -56,12 +58,23 @@ def write_controls_data(workbook, data, cfg):
 
 def write_patients_data(workbook, data, cfg):    
     ws_patients = workbook.add_worksheet('Patienten')
+    ws_patients.set_landscape()
+    ws_patients.set_column("A:C", 4.5)
+    ws_patients.set_column("I:I", 4.5)
+    
+    header3 = '&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RLSeite &P von &N'
+    footer3 = '&RDatum: &D, &T'
+    ws_patients.set_header(header3)
+    ws_patients.set_footer(footer3)
+
     fmt_heading = workbook.add_format(cfg['format_heading'])
+    fmt_heading_right = workbook.add_format(cfg['format_heading'])
+    fmt_heading_right.set_align("right")
     # write additional infos to the the patient sheet
-    ws_patients.write(0,0,"Messergebnisse des Aminosäure-Screenings")
-    ws_patients.write(1,0,"Normbereich", fmt_heading)
-    ws_patients.write(2,0,"min", fmt_heading)
-    ws_patients.write(2,1,"max", fmt_heading)
+    #ws_patients.write(0,0,"Messergebnisse des Aminosäure-Screenings")
+    ws_patients.write(0,0,"Normbereich", fmt_heading)
+    ws_patients.write(1,0,"min", fmt_heading_right)
+    ws_patients.write(1,1,"max", fmt_heading_right)
 	    
     #format the patient data
     patients = data['data_filtered']
@@ -78,37 +91,87 @@ def write_patients_data(workbook, data, cfg):
     fmt[patients.columns[data['idx_invalids']]] = -1 # mark as AS invalid
     fmt.fillna(0, inplace=True) # mark rest as zero = valid
      
-    gap_rows = 26
+    gap_rows = 30
     offset_col = 4
-    idx_row = 2
+    idx_row = 0
     idx_col = offset_col
     second_part = 0
     fmt_bold = workbook.add_format(cfg['format_heading'])
-    ws_patients.write_column(idx_row+2, idx_col-1, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
-    ws_patients.write_column(idx_row+2, idx_col+9, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
-    ws_patients.write_column(idx_row+2, idx_col-3, data['patients_reference'].loc[1,:])
-    ws_patients.write_column(idx_row+2, idx_col-4, data['patients_reference'].loc[0,:])
+    #page_break = []
+    # write min max and amino names 
+    amino_names = []
+    amino_min = []
+    amino_max = []
+    add_empty_row = [5, 8, 11, 14, 17, 20]
+    for idx in range(2, 22):                             
+        if idx in add_empty_row:
+            amino_names.append("")
+            amino_min.append("")
+            amino_max.append("")
+        as_name = data['data_filtered'].columns[idx]
+        amino_names.append(as_name)
+        amino_min.append(data['patients_reference'].loc[1, as_name[:3]])
+        amino_max.append(data['patients_reference'].loc[0, as_name[:3]])
+        
+    ws_patients.write_column(idx_row+2, idx_col-1, amino_names, fmt_heading_right)
+    ws_patients.write_column(idx_row+2, idx_col+9, amino_names, fmt_bold)
+    ws_patients.write_column(idx_row+2, idx_col-3, amino_min)
+    ws_patients.write_column(idx_row+2, idx_col-4, amino_max)
     
     for (idx, row) in data['data_filtered'].iterrows():
-        help_write(cfg, workbook, ws_patients, idx_row, idx_col+second_part, row.iloc[1], 3)    # patient id
-        for idx_as in range(2, 22):                             # write aminos
-            help_write(cfg, workbook, ws_patients, idx_row+idx_as, idx_col+second_part, row.iloc[idx_as], fmt.loc[idx][idx_as])
-        
+        # write patient id
+        help_write(cfg, workbook, ws_patients, idx_row, idx_col+second_part, row.iloc[1], 3)    
+        # write aminos for one patient
+        empty_row = 0
+        for idx_as in range(2, 22):                             
+            if idx_as in add_empty_row:
+                empty_row += 1
+            help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, row.iloc[idx_as], fmt.loc[idx][idx_as])
+            
+        # go to the next patient slot
         idx_col += 1
-        if idx_col%(4+offset_col) == 0: # first four patients are printed, an empty columns follows
+        # first four patients are printed, an empty columns follows
+        if idx_col%(4+offset_col) == 0: 
             second_part = 1
+        # after 8 patients a new page shall start
         elif idx_col%(8+offset_col) == 0:
             idx_col = offset_col # start idx
+            #page_break.append(idx_row)
             idx_row += gap_rows
             second_part = 0
-            ws_patients.write_column(idx_row+2, idx_col-1, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
-            ws_patients.write_column(idx_row+2, idx_col+9, data['data_filtered'].columns.values.tolist()[2:], fmt_bold )
-            ws_patients.write_column(idx_row+2, idx_col-3, data['patients_reference'].loc[1,:])
-            ws_patients.write_column(idx_row+2, idx_col-4, data['patients_reference'].loc[0,:])
+            # write min max and amino names 
+            ws_patients.write(idx_row,0,"Normbereich", fmt_heading)
+            ws_patients.write(idx_row+1,0,"min", fmt_heading_right)
+            ws_patients.write(idx_row+1,1,"max", fmt_heading_right)
+            ws_patients.write_column(idx_row+2, idx_col-1, amino_names, fmt_heading_right )
+            ws_patients.write_column(idx_row+2, idx_col+9, amino_names, fmt_bold )
+            ws_patients.write_column(idx_row+2, idx_col-3, amino_min)
+            ws_patients.write_column(idx_row+2, idx_col-4, amino_max)
+    
+    #ws_patients.h_pagebreaks = [20, 40, 80] #page_break
+    #ws_patients.set_row(7, 30) 
+    #ws_patients.set_row(12, 30) 
+    #ws_patients.set_row(17, 30) 
+    #ws_patients.set_row(22, 30) 
+    
+    ws_patients.set_row(28, 45) 
+    ws_patients.set_row(29, 45) 
+    ws_patients.set_row(58, 45) 
+    ws_patients.set_row(59, 45) 
+    ws_patients.set_row(88, 45) 
+    ws_patients.set_row(89, 45) 
     
 def write_control_data(wb, data, cfg):    
     ws = wb.add_worksheet('Gewählte Kontrolle')
+    ws.set_landscape()
+    header3 = '&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N'
+    footer3 = '&RDatum: &D, &T'
+    ws.set_header(header3)
+    ws.set_footer(footer3)
+    ws.set_column("A:A", 13)
+    ws.set_column("B:Z", 4.5)
     fmt_heading = wb.add_format(cfg['format_heading'])
+    fmt_heading.set_rotation(90)
     write_maxtrix(0, 0, data['control_filtered'], ws, format_header=fmt_heading)
          
 def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
