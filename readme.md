@@ -4,7 +4,7 @@
 2. Die Rohdaten sortieren:
     - Sigma und Phe werden nicht beachtet und können über das json file konfiguriert werden
     - Ko I werden alle nach oben genommen Ko I (61)
-    - Ko II kommt darunter Ko II (RV-62)
+    - Ko II kommt darunter Ko II (62)
     - Patienten aufsteigend sortieren
 
 3. Kontrollen kontrollieren
@@ -27,8 +27,11 @@
     - Die Analyse beinhaltet die Orginaldaten, die analyse der Kontrollen und die Ergebnisse der Patienten.
 
 # Programm
-run.bat führt eine Analyse mit den Parametern aus config.json aus.
-runGui.bat führt die gleiche Analyse durch aber graphisch unterstützt. Bei Gleichstand der Kontrollen oder AS können im Folgenden Dialog diese ausgewählt werden.
+run.bat: führt eine Analyse mit den Parametern aus config.json aus.
+
+runGui.bat: führt die gleiche Analyse durch aber graphisch unterstützt. Bei Gleichstand der Kontrollen oder AS können im Folgenden Dialog diese ausgewählt werden und eine erneute Analyse gestartet werden.
+
+deploy.bat: erstellt eine executable mit pyinstaller. Aus Laufzeitgründen wird empfohlen Python 3.6 mit in den Ordner zu legen und die .bat Skripte anzupassen das diese das Python nutzen.
 
 # dependencies
 - Python 3.6
