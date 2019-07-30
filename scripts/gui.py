@@ -5,7 +5,6 @@ import os
 import pandas as pd
 import aminos
 import logging
-import subprocess
 
 _logger = logging.getLogger("gui")
 
@@ -60,29 +59,35 @@ class MainGui(QtWidgets.QDialog):
         if not os.path.isfile(self.button.get_path()):    
             self.button.setText("Bitte wähle eine Datei aus.")
         else:
-            
-            #with open('data.pickle', 'rb') as handle:
-                #results = pickle.load(handle)
-            cfg = aminos.read_config()
-            cfg["file_to_analyze"] = self.button.get_path()
-            results = aminos.analyse(cfg)
-            #open_path = results['export_excel_path']
-            #subprocess.Popen(['explorer.exe', '/select,"{open_path}"'])
-            conflicts, ret = DateDialog.ShowDialog(results)
-            _logger.info(conflicts)
-            
-            if (ret == True):
-                _logger.info("re-run with prefered control and AS")
-                cfg['prefer_control'] = conflicts[0]
-                cfg['prefer_aminos'] = conflicts[1]
-                data = aminos.analyse(cfg)
+            try:
+                #with open('data.pickle', 'rb') as handle:
+                    #results = pickle.load(handle)
+                cfg = aminos.read_config()
+                cfg["file_to_analyze"] = self.button.get_path()
+                results = aminos.analyse(cfg)
+                #open_path = results['export_excel_path']
+                #subprocess.Popen(['explorer.exe', '/select,"{open_path}"'])
+                conflicts, ret = DateDialog.ShowDialog(results)
+                _logger.info(conflicts)
+                
+                if (ret == True):
+                    _logger.info("re-run with prefered control and AS")
+                    cfg['prefer_control'] = conflicts[0]
+                    cfg['prefer_aminos'] = conflicts[1]
+                    data = aminos.analyse(cfg)
+                    msgBox = QtWidgets.QMessageBox()
+                    msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.");
+                    msgBox.exec();
+                    self.close()
+                else:
+                    _logger.info("program finished")
+                    self.close()
+            except Exception as e:
+                err_message = F"Unexpected error: {e}\nPlease save raw data excel sheet and scripts/logger.log and contact the software developer."
+                _logger.error(err_message)
                 msgBox = QtWidgets.QMessageBox()
-                msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.");
+                msgBox.setText(err_message);
                 msgBox.exec();
-                self.close()
-            else:
-                _logger.info("program finished")
-                self.close()
 
 class DateDialog(QtWidgets.QDialog):
     def __init__(self, results, parent = None):

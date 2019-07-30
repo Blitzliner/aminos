@@ -199,7 +199,7 @@ def switch_amino_columns(cfg, control, score):
     conflicts = []
     for col in score.columns:
         if (score.columns.get_loc(col) <= cfg['max_normal_aminos']):
-            aminos = score.columns.str.contains(col)
+            aminos = score.columns.str.startswith(col)
             idx_name = score[score.columns[aminos]].idxmax(axis=1)
             # check for equal amino pairs 
             for col in score[score.columns[aminos]].columns:
@@ -270,6 +270,7 @@ def filter_patients_data(cfg, data):
 
 def analyse(cfg):
     _logger.info("start AMINOS tool")
+    data = {}
     
     export_dir, excel_sheet_name = preparation(cfg, cfg['file_to_analyze'])
     export_dir = os.path.abspath(export_dir)
@@ -277,7 +278,6 @@ def analyse(cfg):
     _logger.info(export_dir)
     _logger.info(excel_path)
     
-    data = {}
     data['export_dir'] = export_dir
     data['export_excel_path'] = excel_path
     data['raw_data'] = read_raw_data(cfg['file_to_analyze'])
@@ -289,7 +289,7 @@ def analyse(cfg):
     data['data_filtered'], data['idx_invalids'], data['control_filtered'] = filter_patients_data(cfg, data)
     
     # temporaly write into file
-   # with open('data.pickle', 'wb') as handle:
+    # with open('data.pickle', 'wb') as handle:
     #    pickle.dump(data, handle)
     #_logger.debug(data)
     
