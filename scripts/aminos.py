@@ -105,7 +105,9 @@ def filter_raw_data(cfg, data):
     data = data[controls_idx == False]           # remove controls from data matrix
     
     _logger.info("sort data")
+    controls[column_name] = controls[column_name].astype(str)
     controls.sort_values(column_name, axis=0, ascending=True, inplace=True) # sort ascending
+    data[column_name] = data[column_name].astype(str)
     data.sort_values(column_name, axis=0, ascending=True, inplace=True) # sort ascending
     return data, controls
     
