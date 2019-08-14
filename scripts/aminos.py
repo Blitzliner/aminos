@@ -103,7 +103,10 @@ def filter_raw_data(cfg, data):
     _logger.info("split into controls and patient data")
     controls = data[controls_idx]                # get controls from matrix
     data = data[controls_idx == False]           # remove controls from data matrix
-    
+    # set invalid values to None
+    controls = controls.replace("No Peak", None)
+    data = data.replace("No Peak", None)
+    # end set
     _logger.info("sort data")
     controls[column_name] = controls[column_name].astype(str)
     controls.sort_values(column_name, axis=0, ascending=True, inplace=True) # sort ascending
@@ -146,11 +149,13 @@ def check_controls(cfg, data):
                     control_idx_bo = (controls[cfg['columns']['sample_name']] == control_name)
                     
                     for col_name in col_names:
+                        _logger.debug(F"{col} = {col_name}: {val_min} < {controls[col_name][control_idx_bo].to_string(index=False)} > {val_max}")
+                        #print(F"{controls[col_name]}  :  {val_min}")
+                        #print(controls[col_name])
                         ret[col_name][control_idx_bo & (controls[col_name] < val_min)] = 'TOO_LOW'
                         ret[col_name][control_idx_bo & (controls[col_name] > val_max)] = 'TOO_HIGH'
                         ret[col_name][control_idx_bo & (controls[col_name] <= val_max) & (controls[col_name] >= val_min)] = 'NORMAL'
                         
-                        _logger.debug(F"{col} = {col_name}: {val_min} < {controls[col_name][control_idx_bo].to_string(index=False)} > {val_max}")
     return ret
 
 def select_control(cfg, data):
