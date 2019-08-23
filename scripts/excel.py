@@ -126,7 +126,8 @@ def write_patients_data(workbook, data, cfg):
         for idx_as in range(2, 22):                             
             if idx_as in add_empty_row:
                 empty_row += 1
-            help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, row.iloc[idx_as], fmt.loc[idx][idx_as])
+			val = F"{row.iloc[idx_as]:.1f}"
+            help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, val, fmt.loc[idx][idx_as])
             
         # go to the next patient slot
         idx_col += 1
