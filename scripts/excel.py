@@ -209,8 +209,6 @@ def write_maxtrix(idx_row, idx_col, data, worksheet, format_header):
     
     return idx_row
     
-
-
 def exceltopdf(doc):
     excel = client.DispatchEx("Excel.Application")
     excel.Visible = 0

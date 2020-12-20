@@ -17,8 +17,6 @@ consoleHandler.setFormatter(logFormatter)
 consoleHandler.setLevel("INFO")
 _logger.addHandler(consoleHandler)
 
-#logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=logging.INFO)
-#_logger = logging.getLogger("main")
 
 def read_config(config_file = 'config.json', create_new_file=False):
     _logger.info("read config file")
@@ -44,7 +42,6 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['format_number_high'] = {'bg_color': '#fc5c65'}
         data['format_number_low'] = {'bg_color': '#45aaf2'} 
         data['prefer_control'] = 0
-        data['prefer_aminos'] = []
         #warning-color: #fd9644, background: #4b6584
         columns = {}
         columns['sample_name'] = 'Sample Name'
@@ -160,147 +157,8 @@ def check_controls(cfg, data):
 def select_control(data):
     data['checked_controls'] = sorted(data['checked_controls'], key=lambda i: (i['coarse_score'], i['fine_score']), reverse=True)
     best = data['checked_controls'][0]
-    _logger.info(F'best control: {best["name"]} with score {best["coarse_score"]}/{best["fine_score"]}')
-#    
-#    #    
-#    #    
-#    #    series = val['result']
-#    #    too_high_count = series[series=='TOO_HIGH'].count()
-#    #    too_low_count = series[series=='TOO_LOW'].count()
-#    #    val['score'] = 20 - too_high_count - too_low_count
-#        #print(key)
-#        #print(series[series=='NORMAL'].count())
-#        #print(series[series=='TOO_HIGH'].count())
-#        #print(series[series=='TOO_LOW'].count())
-#    #print(data['checked_controls'])    
-#        
-#    exit()
-#    
-#    
-#    dat = {}
-#    
-#    
-#    controls = data['controls']
-#    checked_controls = data['checked_controls']
-#    
-#    print(checked_controls)
-#    print(controls)
-#    exit()
-#    best_control = [0, 0]
-#    second_best_control = [0, 0]
-#    #max_prios_score = 0
-#    #best_control = 0
-#    dat['data'] = {}
-#    for ring in cfg['control_ring_samples']:
-#        column_name = cfg['columns']['sample_name']
-#        # split up the controls
-#        mask = controls[column_name].str.contains(str(ring))
-#        if any(mask):
-#            ring_data = {} 
-#            ring_data['data'] = controls[mask]
-#            ring_data['checked'] = checked_controls[mask]
-#            
-#            counts = ring_data['checked'].apply(pd.value_counts).fillna(0)
-#            ring_data['score'] = counts[(counts.index == 'NORMAL')]
-#            dat['data'][str(ring)] = ring_data
-#            
-#            ring_data['prios'], ring_data['conflicts'] = switch_amino_columns(cfg, ring, ring_data['score'])
-#            ring_data['prios_score'] = ring_data['prios'].sum(axis = 1, skipna = True).item()
-#            _logger.debug(ring_data['prios_score'])
-#            
-#            if best_control[1] < ring_data['prios_score']:
-#                second_best_control = best_control.copy()
-#                best_control[1] = ring_data['prios_score'] 
-#                best_control[0] = ring
-#    
-#    dat['best_control_score'] = best_control[1]
-#    dat['best_control_name'] = best_control[0]
-#    dat['second_best_control_score'] = second_best_control[1]
-#    dat['second_best_control_name'] = second_best_control[0]
-#    
-#    if dat['best_control_score'] == dat['best_control_name']:
-#        _logger.warnung("both controls does have the same score, took first")
-#    _logger.info(F"1. control: {str(dat['best_control_name'])}, score: {str(dat['best_control_score'])}")
-#    _logger.info(F"2. control: {str(dat['second_best_control_name'])}, score: {str(dat['second_best_control_score'])}")
-#    
-#    exit()    
+    _logger.info(F'best control: {best["name"]} with score {best["coarse_score"]}/{best["fine_score"]}')  
     return best['name']
-
-def switch_amino_columns(cfg, control, score):
-    ret = pd.DataFrame().reindex_like(score)
-    conflicts = []
-    for col in score.columns:
-        if (score.columns.get_loc(col) <= cfg['max_normal_aminos']):
-            aminos = score.columns.str.startswith(col)
-            idx_name = score[score.columns[aminos]].idxmax(axis=1)
-            # check for equal amino pairs 
-            for col in score[score.columns[aminos]].columns:
-                if col == idx_name.item():
-                    continue
-                if score[col].item() == score[idx_name.item()].item() and score[col].item() != 0:
-                    # take preferation from settings
-                    if len(cfg['prefer_aminos']) > 0:
-                        if (col in cfg['prefer_aminos']): # switch to preferation
-                            _logger.info(F"Take prefered AS from setting {col}")
-                            idx_name = col
-                        elif (idx_name.item() in cfg['prefer_aminos']):
-                            _logger.info(F"Take prefered AS from setting: {idx_name.item()}")
-                            idx_name = idx_name.item()
-                        else:
-                            _logger.warning(F"Prefered AS for control {str(control)} could not be found in settings file. {col} vs {idx_name.item()}")
-                    else:
-                        conflicts.append((idx_name.item(), col))
-                        _logger.warning(F"Conflict in control {str(control)} with {idx_name.item()} and {col} (score {score[col].item()}), took {idx_name.item()}")
-            ret[idx_name] = score[idx_name]
-    
-    return ret, conflicts       
-
-def filter_patients_data(cfg, data):
-    # overwrite 
-    if cfg['prefer_control'] != 0:
-        best_control = str(cfg['prefer_control'])
-    else:
-        best_control = str(data['selected_control'])
-    dat = data['selected_control']['data'][best_control]['prios']
-    print(dat)
-    exit()
-    idx_not_null = dat.isnull() == False
-    idx_zero = dat == 0
-    
-    _logger.info("sort out invalid AS from patients data") 
-    idx_valids = []
-    for idx, val in idx_not_null.T.iterrows(): 
-        if val.item() == True:
-            idx_valids.append(idx_not_null.columns.get_loc(idx))
-    #print(idx_valids)
-    idx_invalids = []
-    for idx, val in idx_zero.T.iloc[2:].iterrows(): 
-        if val.item() == True:
-            idx_invalids.append(idx_zero.columns.get_loc(idx))
-    
-    patients = data['data'].copy()
-    #patients.loc[:, [idx_valids]]
-    filtered_patients = patients[patients.columns[idx_valids]]
-    
-    _logger.info("sorting patients data") 
-    lis = list(filtered_patients.columns.values)
-    sorted_cols = lis[0:2] # ignore first two columns
-    aminos_sorted = sorted(filtered_patients.columns[2:])
-    sorted_cols.extend(aminos_sorted)
-    #change place of Ile and Leu
-    tmp = sorted_cols[10]
-    sorted_cols[10] = sorted_cols[11]
-    sorted_cols[11] = tmp
-    
-    new_patients = filtered_patients.reindex(sorted_cols, axis=1)
-    
-    ## prepare columns for best control
-    control = data['selected_control']['data'][best_control]['data'].copy()
-    control = control[patients.columns[idx_valids]]
-    new_control = control.reindex(sorted_cols, axis=1)
-    print(idx_invalids)
-    print(data['checked_controls'])
-    return (new_patients, idx_invalids, new_control)
 
 def analyse(cfg):
     _logger.info("start AMINOS tool")
@@ -320,7 +178,6 @@ def analyse(cfg):
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data)
     data['selected_control'] = select_control(data)
-    #data['data_filtered'], data['idx_invalids'], data['control_filtered'] = filter_patients_data(cfg, data)
     
     # temporaly write into file
     # with open('data.pickle', 'wb') as handle:
