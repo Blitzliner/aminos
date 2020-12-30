@@ -20,10 +20,7 @@ def export(cfg, filename, data):
     write_patients_data(workbook, data, cfg)
    
     workbook.close()
-    
     exceltopdf(filename)
-    command = f"start EXCEL.EXE {filename}"
-    os.system(command)
 
 def write_raw_data(workbook, data, cfg):
     ws_raw_data = workbook.add_worksheet('Rohdaten')
@@ -44,7 +41,7 @@ def write_controls_data(workbook, data, cfg):
     fmt_even_row = workbook.add_format({'bg_color': '#eeeeee'})
     fmt_invalid = workbook.add_format(cfg['format_number_invalid'])
     
-    ws_controls.write(0, 0, F"1. Wahl: Kontrolle {data['selected_control']}", fmt_heading)
+    ws_controls.write(0, 0, F"Bevorzugte Kontrolle: {data['selected_control']['name']}", fmt_heading)
     
     row_idx = 2
     ws_controls.write(row_idx, 0, 'Ranking', fmt_heading_orient)
@@ -54,8 +51,8 @@ def write_controls_data(workbook, data, cfg):
     ws_controls.write(row_idx, 3, 'Score', fmt_heading_orient)
     ws_controls.write_row(row_idx, 5, data['controls'].columns.values.tolist()[2:], fmt_heading_orient)
     ws_controls.set_column('A:Y', 4.2)
-    ws_controls.set_column('C:C', 4.8)
-    ws_controls.set_column('E:E', 1.5)
+    ws_controls.set_column('B:C', 5.2)  # Name und Gültigkeit
+    ws_controls.set_column('E:E', 1.5)  # Abstand vor den aminos
     
     row_idx = 3
     first_invalid = None
@@ -64,6 +61,7 @@ def write_controls_data(workbook, data, cfg):
         ws_controls.write(row_idx, 1, dat['name'], fmt_heading)
         ws_controls.write(row_idx, 2, f"{dat['coarse_score']}/20")
         ws_controls.write(row_idx, 3, f"{round(dat['fine_score']*100,1)}%", fmt_center)
+        # highlight every second row to increase readability
         if rank%2 == 0:
             ws_controls.write_row(row_idx, 5, dat['raw_data'].to_numpy()[2:])
         else:
@@ -76,8 +74,8 @@ def write_controls_data(workbook, data, cfg):
         for inv in invalids:
             pos = res.index.get_loc(inv)
             ws_controls.conditional_format(row_idx, pos+5, row_idx, pos+5, {'type': 'no_errors', 'format': fmt_invalid}) 
-            # mark heading as invalid
-            if rank == 0:
+            # mark heading as invalid for the selected control only
+            if data['selected_control']['name'] == dat['name']:   #rank == 0 and 
                 ws_controls.conditional_format(2, pos+5, 2, pos+5, {'type': 'no_errors', 'format': fmt_invalid}) 
         
         row_idx += 1
@@ -113,7 +111,7 @@ def write_patients_data(workbook, data, cfg):
         fmt[col][patients[col] < val_min] = 1 # mark as too low
         fmt[col][patients[col] > val_max] = 2 # mark as too high
     # mark aminos as invalid 
-    res = data['checked_controls'][0]['result']
+    res = data['selected_control']['result']
     invalids = res[res=='TOO_LOW'].index.to_list() + res[res=='TOO_HIGH'].index.to_list()
     invalids = list(set(invalids))
     fmt[invalids] = -1
@@ -217,10 +215,11 @@ def exceltopdf(doc):
     export_path = os.path.splitext(doc)[0] + '.pdf'
     wb.WorkSheets([2, 3]).Select()
     try:
-        #wb.Worksheets[1:].SaveAs(export_path, FileFormat=57)
         wb.ActiveSheet.ExportAsFixedFormat(0, export_path)
+        os.startfile(export_path)
     except Exception as e:
         print(f"Failed to convert: {e}")
     finally:
         wb.Close()
         excel.Quit()
+    

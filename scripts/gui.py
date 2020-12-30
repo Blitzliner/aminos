@@ -52,7 +52,7 @@ class MainGui(QtWidgets.QDialog):
         btn_run.move(10, 200)
         btn_run.clicked.connect(self.start_analyses)
         
-        self.setWindowTitle('AMINOS v0.1')
+        self.setWindowTitle('AMINOS v0.1.2')
         self.setGeometry(400, 400, 350, 250)
         self.setFixedSize(350, 260)
 

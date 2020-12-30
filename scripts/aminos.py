@@ -6,6 +6,7 @@ import datetime
 import pandas as pd
 import re
 from shutil import copyfile
+from collections import Counter
 
 #setup logger for console and file
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
@@ -32,17 +33,14 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['file_extension_analysis'] = '_Analyse.xlsx'
         data['ignore_calibration'] = "[KkCc]al\s?\d"
         data['control_name'] = '(([CckK][oO])|([qQ][cC]))\\s?[I\\d]'
-        data['control_ring_samples'] = [61, 62, 31, 32]
-        data['max_normal_aminos'] = 21
         data['control_reference_file_path'] = './reference/kontrollwerte.csv'
         data['patients_reference_file_path'] = './reference/patienten_kontrollwerte.csv'
-        data['format_heading'] = {'bold': True} #, 'bg_color': '#f1f2f6'
-        data['format_number_invalid'] = {'bg_color': '#d1d8e0', 'font_color': '#636e72'}
-        data['format_number_valid'] = {'bg_color': '#2bcbba'} ##26de81
-        data['format_number_high'] = {'bg_color': '#fc5c65'}
-        data['format_number_low'] = {'bg_color': '#45aaf2'} 
-        data['prefer_control'] = 0
-        #warning-color: #fd9644, background: #4b6584
+        data['format_heading'] = {'bold': True}
+        data['format_number_invalid'] = {'bg_color': '#cccccc', 'font_color': '#666666', 'align': 'center'}
+        data['format_number_valid'] = {'font_color': '#000000', 'align': 'center'}
+        data['format_number_high'] = {'bg_color': '#FAAAAA', 'font_color': '#A03232', 'align': 'center'}
+        data['format_number_low'] = {'bg_color': '#c8c8fa', 'font_color': '#323250', 'align': 'center'} 
+        data['prefer_control'] = ''
         columns = {}
         columns['sample_name'] = 'Sample Name'
         data['columns'] = columns
@@ -98,8 +96,8 @@ def filter_raw_data(cfg, data):
     data = data.drop(data[data[column_name].str.match(ignore_pattern) == True].index) # remove all unused calibration
     controls_idx = (data[column_name].str.match(control_name_pattern) == True)
     _logger.info("split into controls and patient data")
-    controls = data[controls_idx]                # get controls from matrix
-    data = data[controls_idx == False]           # remove controls from data matrix
+    controls = data[controls_idx]  # get controls from matrix
+    data = data[controls_idx == False]  # remove controls from data matrix
     _logger.info(f"set invalid values 'No Peak' to None")
     controls = controls.replace("No Peak", None)
     data = data.replace("No Peak", None)
@@ -119,19 +117,18 @@ def check_controls(cfg, data):
         # search in the controls for control ring samples
         control_name = row_data[cfg['columns']['sample_name']]
         if 'I' in control_name:
-            raw_num = control_name.count('I')  # convert III integer
+            control_num = control_name.count('I')  # convert III integer
         else:
-            raw_num = int(re.search(r'(\d)', control_name)[0])
-        _logger.info(F"Get reference control dataset {raw_num} for control {control_name}")
+            control_num = int(re.search(r'(\d)', control_name)[0])
+        _logger.info(F"Get reference control dataset {control_num} for control {control_name}")
         
         # get the limits from the reference frame
-        matched_control = control_reference[control_reference['controls'] == raw_num]
+        matched_control = control_reference[control_reference['controls'] == control_num]
         
         meas_con = row_data[2:]
         ref_min = matched_control.iloc[0, 2:]
         ref_mean = matched_control.iloc[2, 2:]
         ref_max = matched_control.iloc[2, 2:]
-        
         # get the shape and initialize with NORMAL
         res = meas_con.copy()
         res.iloc[:] = 'NORMAL'
@@ -151,14 +148,39 @@ def check_controls(cfg, data):
         
         results.append({'name': control_name, 'result': res, 'coarse_score': coarse_score, 'fine_score': fine_score, 'raw_data': row_data})
         _logger.info(f'{control_name} score: {coarse_score}/{fine_score}')
-        
+    
+    # change name of control if control name already exist
+    all_control_names = [control['name'] for control in results]
+    # first count number of occurences
+    controls_count = Counter(all_control_names)
+    # after the have the number of each control occurence we manipulate the name
+    for control in results:
+        name = control['name']
+        count = controls_count[name]  # all_control_names.count(name)  # 
+        control['name'] += f'_{count}'
+        controls_count[name] -= 1
     return results
 
-def select_control(data):
+def select_control(cfg, data):
+    prefered_control = cfg['prefer_control']
     data['checked_controls'] = sorted(data['checked_controls'], key=lambda i: (i['coarse_score'], i['fine_score']), reverse=True)
     best = data['checked_controls'][0]
-    _logger.info(F'best control: {best["name"]} with score {best["coarse_score"]}/{best["fine_score"]}')  
-    return best['name']
+    _logger.info(F'best control: {best["name"]} with score {best["coarse_score"]}/{best["fine_score"]}')
+    
+    if len(cfg['prefer_control']) > 0:
+        if any(cfg['prefer_control'] == control['name'] for control in data['checked_controls']):
+            _logger.info(f"Your prefered control: {cfg['prefer_control']}")
+        else:
+            prefered_control = best['name']
+            _logger.warning(f"Your prefered control seems not to be valid: {cfg['prefer_control']}")
+            _logger.info(f"I use the best control for you: {prefered_control}")
+    else:
+        prefered_control = best['name']
+        _logger.info(f"No prefered control selected. I use the best for you: {prefered_control}")
+    
+    prefered_control_dat = [dat for dat in data['checked_controls'] if prefered_control == dat['name']][0]
+    
+    return prefered_control_dat
 
 def analyse(cfg):
     _logger.info("start AMINOS tool")
@@ -177,12 +199,7 @@ def analyse(cfg):
     data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
     data['checked_controls'] = check_controls(cfg, data)
-    data['selected_control'] = select_control(data)
-    
-    # temporaly write into file
-    # with open('data.pickle', 'wb') as handle:
-    #    pickle.dump(data, handle)
-    #_logger.debug(data)
+    data['selected_control'] = select_control(cfg, data)
     
     excel.export(cfg, excel_path, data)
     

@@ -39,5 +39,5 @@ deploy.bat: erstellt eine executable mit pyinstaller. Aus Laufzeitgründen wird 
   - xlsxwriter
   - PyQt5
   - pandas
-  - xlrd
+  - xlrd==1.2.0
   - pyinstaller
