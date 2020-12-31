@@ -1,0 +1,36 @@
+{
+    "columns": {
+        "sample_name": "Sample Name"
+    },
+    "control_name": "(([CckK][oO])|([qQ][cC]))\\s?[I\\d]",
+    "control_reference_file_path": "./reference/kontrollwerte.csv",
+    "export_directory": "../analysed/",
+    "file_extension_analysis": "_Analyse.xlsx",
+    "file_extension_raw_data": "_Rohdaten.xlsx",
+    "file_to_analyze": "../examples/bsp_Rohdaten.xlsx",
+    "format_heading": {
+        "bold": true
+    },
+    "format_number_high": {
+        "bg_color": "#FAAAAA",
+        "font_color": "#A03232",
+        "align": "center"
+    },
+    "format_number_invalid": {
+        "bg_color": "#cccccc",
+        "font_color": "#666666",
+        "align": "center"
+    },
+    "format_number_low": {
+        "bg_color": "#c8c8fa",
+        "font_color": "#323250",
+        "align": "center"
+    },
+    "format_number_valid": {
+        "font_color": "#000000",
+        "align": "center"
+    },
+    "ignore_calibration": "[KkCc]al\\s?\\d",
+    "patients_reference_file_path": "./reference/patienten_kontrollwerte.csv",
+    "prefer_control": ""
+}

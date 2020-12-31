@@ -60,7 +60,6 @@ def read_reference_data(filepath):
         _logger.error(F"could not read reference data. File is missing: {filepath}")    
     return data
 
-    
 def read_raw_data(filepath):
     _logger.info("read raw data")
     data = {}

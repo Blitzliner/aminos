@@ -40,6 +40,9 @@ def write_controls_data(workbook, data, cfg):
     fmt_center = workbook.add_format({'align': 'center'})
     fmt_even_row = workbook.add_format({'bg_color': '#eeeeee'})
     fmt_invalid = workbook.add_format(cfg['format_number_invalid'])
+    fmt_border = workbook.add_format({'bottom': 1, 'top': 1})
+    fmt_border_left = workbook.add_format({'bottom': 1, 'top': 1, 'left': 1})
+    fmt_border_right = workbook.add_format({'bottom': 1, 'top': 1, 'right': 1})
     
     ws_controls.write(0, 0, F"Bevorzugte Kontrolle: {data['selected_control']['name']}", fmt_heading)
     
@@ -78,6 +81,12 @@ def write_controls_data(workbook, data, cfg):
             if data['selected_control']['name'] == dat['name']:   #rank == 0 and 
                 ws_controls.conditional_format(2, pos+5, 2, pos+5, {'type': 'no_errors', 'format': fmt_invalid}) 
         
+        # add border to the selected with control
+        if data['selected_control']['name'] == dat['name']:
+            ws_controls.conditional_format(row_idx, 1, row_idx, 23, {'type': 'no_errors', 'format': fmt_border}) 
+            ws_controls.conditional_format(row_idx, 0, row_idx, 0, {'type': 'no_errors', 'format': fmt_border_left})
+            ws_controls.conditional_format(row_idx, 24, row_idx, 24, {'type': 'no_errors', 'format': fmt_border_right})
+            
         row_idx += 1
     
         
@@ -86,8 +95,10 @@ def write_patients_data(workbook, data, cfg):
     ws_patients.set_landscape()
     ws_patients.set_header('&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N')
     ws_patients.set_footer('&RDatum: &D, &T')
-    ws_patients.set_column("A:C", 5.2)
-    ws_patients.set_column("I:I", 3.0)
+    ws_patients.set_column("A:B", 5.2)
+    ws_patients.set_column("C:C", 14.5)
+    ws_patients.set_column("M:M", 14.5)
+    ws_patients.set_column("H:H", 3.0)  # gap between the patient
     
     fmt_heading = workbook.add_format(cfg['format_heading'])
     fmt_heading.set_align('center')
@@ -118,7 +129,7 @@ def write_patients_data(workbook, data, cfg):
 
     # 
     gap_rows = 30
-    offset_col = 4
+    offset_col = 3
     idx_row = 0
     idx_col = offset_col
     second_part = 0
@@ -149,13 +160,13 @@ def write_patients_data(workbook, data, cfg):
             ws_patients.write(idx_row+1, 1, "max", fmt_heading)
             ws_patients.write_column(idx_row+2, 0, amino_min, fmt_normal)
             ws_patients.write_column(idx_row+2, 1, amino_max, fmt_normal)
-            ws_patients.write_column(idx_row+2, 3, amino_names, fmt_heading_right)
-            ws_patients.write_column(idx_row+2, 13, amino_names, fmt_heading_left)
+            ws_patients.write_column(idx_row+2, 2, amino_names, fmt_heading_right)
+            ws_patients.write_column(idx_row+2, 12, amino_names, fmt_heading_left)
             for inv in invalids:
                 pos = res.index.get_loc(inv)
                 pos += pos//3
-                ws_patients.conditional_format(idx_row+2+pos, 13, idx_row+2+pos, 13, {'type': 'no_errors', 'format': fmt_invalid})
-                ws_patients.conditional_format(idx_row+2+pos, 3, idx_row+2+pos, 3, {'type': 'no_errors', 'format': fmt_invalid})
+                ws_patients.conditional_format(idx_row+2+pos, 12, idx_row+2+pos, 12, {'type': 'no_errors', 'format': fmt_invalid})
+                ws_patients.conditional_format(idx_row+2+pos, 2, idx_row+2+pos, 2, {'type': 'no_errors', 'format': fmt_invalid})
             
             # add page break
             offset = gap_rows-1
