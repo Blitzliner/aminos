@@ -9,7 +9,7 @@ from shutil import copyfile
 from collections import Counter
 
 #setup logger for console and file
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
 
 _logger = logging.getLogger("main")
 logFormatter = logging.Formatter("%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s")
@@ -92,7 +92,10 @@ def filter_raw_data(cfg, data):
     column_name = cfg['columns']['sample_name']
     ignore_pattern = cfg['ignore_calibration']
     control_name_pattern = cfg['control_name']
-    data = data.drop(data[data[column_name].str.match(ignore_pattern) == True].index) # remove all unused calibration
+    remove_cols_idx = data[data[column_name].str.match(ignore_pattern) == True].index
+    col_names = data.loc[remove_cols_idx, column_name]
+    _logger.info(f'Remove columns: {", ".join(col_names)}')
+    data = data.drop(remove_cols_idx) # remove all unused calibration
     controls_idx = (data[column_name].str.match(control_name_pattern) == True)
     _logger.info("split into controls and patient data")
     controls = data[controls_idx]  # get controls from matrix

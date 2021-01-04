@@ -26,7 +26,7 @@ class Button(QtWidgets.QPushButton):
         m = e.mimeData()
         if m.hasUrls():
             filepath = m.urls()[0].toLocalFile()
-            print(F"filepath: {filepath}")
+            _logger.info(F"Filepath selected: {filepath}")
             if (os.path.splitext(filepath)[-1].lower() != ".xlsx"):
                 self.setText("Netter Versuch..\n\nBitte Rohdaten im Format *.xlsx wählen!")
             else:
@@ -69,7 +69,6 @@ class MainGui(QtWidgets.QDialog):
                 
                 if (ret == False):
                     _logger.info("re-run with prefered control and AS")
-                    _logger.error("Not yet supported")
                     cfg['prefer_control'] = selected_control
                     data = aminos.analyse(cfg)
                     msgBox = QtWidgets.QMessageBox()

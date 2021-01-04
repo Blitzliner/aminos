@@ -53,9 +53,10 @@ def write_controls_data(workbook, data, cfg):
     ws_controls.set_column('D:D', None, None, {'hidden': True})
     ws_controls.write(row_idx, 3, 'Score', fmt_heading_orient)
     ws_controls.write_row(row_idx, 5, data['controls'].columns.values.tolist()[2:], fmt_heading_orient)
-    ws_controls.set_column('A:Y', 4.2)
-    ws_controls.set_column('B:C', 5.2)  # Name und Gültigkeit
-    ws_controls.set_column('E:E', 1.5)  # Abstand vor den aminos
+    ws_controls.set_column('A:Y', 4.3)
+    ws_controls.set_column('B:C', 7.5)  # Name der Kontrolle
+    ws_controls.set_column('C:C', 5.0)  # Gültigkeit
+    ws_controls.set_column('E:E', 1.0)  # Abstand vor den aminos
     
     row_idx = 3
     first_invalid = None
@@ -95,6 +96,7 @@ def write_patients_data(workbook, data, cfg):
     ws_patients.set_landscape()
     ws_patients.set_header('&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N')
     ws_patients.set_footer('&RDatum: &D, &T')
+    ws_patients.set_column('A:Y', 6.0)  # define all column width
     ws_patients.set_column("A:B", 5.2)
     ws_patients.set_column("C:C", 14.5)
     ws_patients.set_column("M:M", 14.5)
@@ -126,8 +128,7 @@ def write_patients_data(workbook, data, cfg):
     invalids = res[res=='TOO_LOW'].index.to_list() + res[res=='TOO_HIGH'].index.to_list()
     invalids = list(set(invalids))
     fmt[invalids] = -1
-
-    # 
+    
     gap_rows = 30
     offset_col = 3
     idx_row = 0
@@ -151,9 +152,10 @@ def write_patients_data(workbook, data, cfg):
         amino_max.append(data['patients_reference'].loc[0, as_name])
         
     # first four patients are printed, an empty columns follows and the next 4 patients are printed.
-    for (idx, patient) in data['data'].iterrows():
+    for idx, (_, patient) in enumerate(data['data'].iterrows()):  # to get the line_number instead of the pandas index use enumerate here
+    #for (idx, patient) in data['data'].iterrows():
         if idx%8 == 0:
-            idx_row = idx//8*gap_rows
+            idx_row = (idx//8)*gap_rows
             # write min max and amino names
             ws_patients.write(idx_row, 0, "Normbereich", fmt_heading_left)
             ws_patients.write(idx_row+1, 0, "min", fmt_heading)
@@ -182,15 +184,31 @@ def write_patients_data(workbook, data, cfg):
             second_part = 0
         
         # write patient id
-        help_write(cfg, workbook, ws_patients, idx_row, idx_col+second_part, int(patient.iloc[1]), 3)   
-
+        patient_id = patient.iloc[1]
+        value = int(patient_id) if patient_id and patient_id.isdecimal() else patient_id
+        # split too long text into a second line
+        if len(patient_id) > 9 and isinstance(value, str):
+            idx_spaces = [i for i, ltr in enumerate(value) if ltr == ' ']
+            split_idx = 9
+            for idx in idx_spaces:
+                if idx >= 6:
+                    split_idx = idx
+                    break
+            split_idx = min(split_idx, 10) + 1
+            second_value = value[split_idx:]
+            value = value[:split_idx]  # + '-'
+            _logger.info(f'Splitted heading into two parts: {value}, {second_value}') 
+            help_write(cfg, workbook, ws_patients, idx_row+1, idx_col+second_part, second_value, 3)  
+        help_write(cfg, workbook, ws_patients, idx_row, idx_col+second_part, value, 3)   
+        
+        
         # write aminos for one patient
         empty_row = 0
         for idx_as in range(2, 22):                             
             if idx_as in add_empty_row:
                 empty_row += 1
             val = patient.iloc[idx_as]
-            help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, val, fmt.loc[idx][idx_as])
+            help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, val, fmt.iloc[idx, idx_as])
         
         # go to the next patient slot
         idx_col += 1
