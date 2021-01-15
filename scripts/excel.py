@@ -148,8 +148,8 @@ def write_patients_data(workbook, data, cfg):
             amino_max.append('')
         as_name = data['data'].columns[idx]
         amino_names.append(as_name)
-        amino_min.append(data['patients_reference'].loc[1, as_name])
-        amino_max.append(data['patients_reference'].loc[0, as_name])
+        amino_min.append(data['patients_reference'].loc[0, as_name])
+        amino_max.append(data['patients_reference'].loc[1, as_name])
         
     # first four patients are printed, an empty columns follows and the next 4 patients are printed.
     for idx, (_, patient) in enumerate(data['data'].iterrows()):  # to get the line_number instead of the pandas index use enumerate here
@@ -207,7 +207,7 @@ def write_patients_data(workbook, data, cfg):
         for idx_as in range(2, 22):                             
             if idx_as in add_empty_row:
                 empty_row += 1
-            val = patient.iloc[idx_as]
+            val = round(patient.iloc[idx_as], 1)
             help_write(cfg, workbook, ws_patients, idx_row+idx_as+empty_row, idx_col+second_part, val, fmt.iloc[idx, idx_as])
         
         # go to the next patient slot
