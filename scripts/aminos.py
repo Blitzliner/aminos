@@ -6,7 +6,7 @@ import datetime
 import pandas as pd
 import re
 from shutil import copyfile
-from collections import Counter
+from collections import Counter, OrderedDict
 
 #setup logger for console and file
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s (%(lineno)s) - %(levelname)s: %(message)s", datefmt='%Y.%m.%d %H:%M:%S', filename="logger.log")
@@ -22,8 +22,8 @@ _logger.addHandler(consoleHandler)
 def read_config(config_file = 'config.json', create_new_file=False):
     _logger.info("read config file")
     if create_new_file == False and os.path.isfile(config_file):
-        with open(config_file) as json_data_file:
-            data = json.load(json_data_file)
+        with open(config_file, encoding='utf-8') as json_data_file:
+            data = json.load(json_data_file, object_pairs_hook=OrderedDict)
     else:
         _logger.warning("config file does not exist. A default config file has been created.")
         data = {}
@@ -60,11 +60,19 @@ def read_reference_data(filepath):
         _logger.error(F"could not read reference data. File is missing: {filepath}")    
     return data
 
-def read_raw_data(filepath):
+def read_raw_data(amino_names, filepath):
     _logger.info("read raw data")
     data = {}
     if os.path.isfile(filepath):
-        data = pd.read_excel(filepath) 
+        data = pd.read_excel(filepath)
+        _logger.info('rename columns according to the key value pairs in the config')
+        for key, val in amino_names.items():
+            data = data.rename(columns={val: key})
+       
+        _logger.info('reorder columns accordig to the order of the config')
+        old_col_names = list(data.columns.values)
+        new_col_names = old_col_names[0:2] + list(amino_names.keys())
+        data = data[new_col_names]
     else:
         _logger.error(F"could not read raw data. File is missing: {filepath}")
     return data
@@ -100,9 +108,11 @@ def filter_raw_data(cfg, data):
     _logger.info("split into controls and patient data")
     controls = data[controls_idx]  # get controls from matrix
     data = data[controls_idx == False]  # remove controls from data matrix
-    _logger.info(f"set invalid values 'No Peak' to None")
+    _logger.info(f"set invalid values 'No Peak' to None, '< 0' to 0.0")
     controls = controls.replace("No Peak", None)
+    controls = controls.replace("< 0", 0.0)
     data = data.replace("No Peak", None)
+    data = data.replace("< 0", 0.0)
     _logger.info("sort data")
     controls[column_name] = controls[column_name].astype(str)
     controls.sort_values(column_name, axis=0, ascending=True, inplace=True) # sort ascending
@@ -134,23 +144,31 @@ def check_controls(cfg, data):
         # get the shape and initialize with NORMAL
         res = meas_con.copy()
         res.iloc[:] = 'NORMAL'
+        
         # mark as too high or too low
         res[meas_con < ref_min] = 'TOO_LOW'
         res[meas_con > ref_max] = 'TOO_HIGH'
         
-        # get coarse score
-        too_high_count = res[res=='TOO_HIGH'].count()
-        too_low_count = res[res=='TOO_LOW'].count()
-        coarse_score = 20 - too_high_count - too_low_count
+        # get coarse score only for aminos of interest
+        aoi = cfg['aminos_score']
+        _logger.info(f'only calc score for aminos of interest: {aoi}')
+        res_oi = res.loc[aoi]
+        too_high_count = res_oi[res_oi=='TOO_HIGH'].count()
+        too_low_count = res_oi[res_oi=='TOO_LOW'].count()
+        coarse_score = len(aoi) - too_high_count - too_low_count
         
         # get fine score 
-        error = (meas_con - ref_mean).abs()
-        delta = (ref_mean - ref_min).abs()
+        meas_con_oi = meas_con.loc[aoi]
+        ref_mean_oi = ref_mean.loc[aoi]
+        ref_min_oi = ref_min.loc[aoi]
+        error = (meas_con_oi - ref_mean_oi).abs()
+        delta = (ref_mean_oi - ref_min_oi).abs()
+        
         fine_score = round((1 - error/delta).mean(), 3)
         
         results.append({'name': control_name, 'result': res, 'coarse_score': coarse_score, 'fine_score': fine_score, 'raw_data': row_data})
         _logger.info(f'{control_name} score: {coarse_score}/{fine_score}')
-    
+        
     # change name of control if control name already exist
     all_control_names = [control['name'] for control in results]
     # first count number of occurences
@@ -196,7 +214,7 @@ def analyse(cfg):
     
     data['export_dir'] = export_dir
     data['export_excel_path'] = excel_path
-    data['raw_data'] = read_raw_data(cfg['file_to_analyze'])
+    data['raw_data'] = read_raw_data(cfg['aminos_names'], cfg['file_to_analyze'])
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
     data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
     data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
