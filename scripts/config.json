@@ -30,6 +30,9 @@
         "font_color": "#000000",
         "align": "center"
     },
+    "format_row_even": {
+        "bg_color": "#eeeeee"
+    },
     "ignore_calibration": "[KkCc]al\\s?\\d",
     "patients_reference_file_path": "./reference/patienten_kontrollwerte.csv",
     "prefer_control": "",
