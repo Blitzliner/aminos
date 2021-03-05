@@ -109,9 +109,9 @@ def filter_raw_data(cfg, data):
     controls = data[controls_idx]  # get controls from matrix
     data = data[controls_idx == False]  # remove controls from data matrix
     _logger.info(f"set invalid values 'No Peak' to None, '< 0' to 0.0")
-    controls = controls.replace("No Peak", None)
+    controls = controls.replace("No Peak", 0.0)
     controls = controls.replace("< 0", 0.0)
-    data = data.replace("No Peak", None)
+    data = data.replace("No Peak", 0.0)
     data = data.replace("< 0", 0.0)
     _logger.info("sort data")
     controls[column_name] = controls[column_name].astype(str)
