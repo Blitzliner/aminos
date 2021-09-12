@@ -31,8 +31,8 @@ def read_config(config_file = 'config.json', create_new_file=False):
         data['export_directory'] = '../analysed/'
         data['file_extension_raw_data'] = '_Rohdaten.xlsx'
         data['file_extension_analysis'] = '_Analyse.xlsx'
-        data['ignore_calibration'] = "[KkCc]al\s?\d"
-        data['control_name'] = '(([CckK][oO])|([qQ][cC]))\\s?[I\\d]'
+        data['ignore_calibration'] = '[KkCc]al\s?\d'
+        data['control_name'] = 'ASSKo\d'
         data['control_reference_file_path'] = './reference/kontrollwerte.csv'
         data['patients_reference_file_path'] = './reference/patienten_kontrollwerte.csv'
         data['format_heading'] = {'bold': True}

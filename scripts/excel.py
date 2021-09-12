@@ -107,8 +107,8 @@ def write_controls_full(workbook, data, cfg, fmt):
     ws_controls.set_header('&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N')
     ws_controls.set_footer('&RDatum: &D, &T')
     ws_controls.set_column('A:A', 24.0)
-    ws_controls.set_column('B:B', 3.0)  # gap between the patient
-    ws_controls.set_column('C:K', 6.5)  # all other columns
+    ws_controls.set_column('B:B', 1.0)  # gap between the patient
+    ws_controls.set_column('C:K', 8.0)  # all other columns
     
     fmt_border = workbook.add_format({'left': 1, 'right': 1})
     fmt_border_top = workbook.add_format({'left': 1, 'top': 1, 'right': 1})
