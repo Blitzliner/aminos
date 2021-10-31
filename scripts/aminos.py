@@ -22,8 +22,21 @@ _logger.addHandler(consoleHandler)
 def read_config(config_file = 'config.json', create_new_file=False):
     _logger.info("read config file")
     if create_new_file == False and os.path.isfile(config_file):
-        with open(config_file, encoding='utf-8') as json_data_file:
-            data = json.load(json_data_file, object_pairs_hook=OrderedDict)
+        try:
+        
+            with open(config_file, encoding='utf-8') as json_data_file:
+                data = json.load(json_data_file, object_pairs_hook=OrderedDict)
+        except json.decoder.JSONDecodeError as e:
+            _logger.warning(e)
+            _logger.info('Try utf-8-sig instead')
+            try:
+                with open(config_file, encoding='utf-8-sig') as json_data_file:
+                    data = json.load(json_data_file, object_pairs_hook=OrderedDict)
+            except json.decoder.JSONDecodeError as e:
+                _logger.critical(e)
+        except UnicodeDecodeError as e:
+            _logger.critical(e)
+            _logger.info('Save config under different encoding such as utf-8 or utf-8 BOM')
     else:
         _logger.warning("config file does not exist. A default config file has been created.")
         data = {}
@@ -47,17 +60,17 @@ def read_config(config_file = 'config.json', create_new_file=False):
         
         with open(config_file, 'w') as fp:
             json.dump(data, fp, indent=4, sort_keys=True)
-            
+
     return data
 
 def read_reference_data(filepath):
     filepath = os.path.abspath(filepath)
-    _logger.info(F"read {filepath} reference data")
+    _logger.info(F'read reference file "{os.path.basename(filepath)}"')
     data = {}
     if os.path.isfile(filepath):
         data = pd.read_csv(filepath) 
     else:
-        _logger.error(F"could not read reference data. File is missing: {filepath}")    
+        _logger.critical(F"could not read reference data. File is missing: {filepath}")    
     return data
 
 def read_raw_data(amino_names, filepath):
@@ -74,7 +87,7 @@ def read_raw_data(amino_names, filepath):
         new_col_names = old_col_names[0:2] + list(amino_names.keys())
         data = data[new_col_names]
     else:
-        _logger.error(F"could not read raw data. File is missing: {filepath}")
+        _logger.critical(F"could not read raw data. File is missing: {filepath}")
     return data
 
 def get_timestamp():
