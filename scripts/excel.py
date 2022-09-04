@@ -18,6 +18,7 @@ class Format:
         self.heading_right = workbook.add_format({**cfg['format_heading'], 'align': 'right'})
         self.heading_left = workbook.add_format({**cfg['format_heading'], 'align': 'left'})
         self.center = workbook.add_format({'align': 'center'})
+        self.right = workbook.add_format({'align': 'right'})
         self.even = workbook.add_format(cfg['format_row_even'])
         self.valid = workbook.add_format(cfg['format_number_valid'])
         self.invalid = workbook.add_format(cfg['format_number_invalid'])
@@ -26,25 +27,27 @@ def export(cfg, filename, data):
     workbook = xlsxwriter.Workbook(filename)
     fmt = Format(workbook, cfg)
     
-    _logger.info("write raw data to excel")
+    _logger.info('Write raw data to excel')
     write_raw_data(workbook, data, cfg, fmt)
     
-    _logger.info("write controls data to excel")
-    write_controls_data(workbook, data, cfg, fmt)
+    #_logger.info('Write controls data to excel')
+    #write_controls_data(workbook, data, cfg, fmt)
    
-    _logger.info("write full available controls data")
+    _logger.info('Write all available controls data')
     write_controls_full(workbook, data, cfg, fmt)
     
-    _logger.info("write patients data")
+    _logger.info('Write patients data')
     write_patients_data(workbook, data, cfg, fmt)
    
     workbook.close()
     exceltopdf(filename)
 
+
 def write_raw_data(workbook, data, cfg, fmt):
     ws_raw_data = workbook.add_worksheet('Rohdaten')
     ws_raw_data.set_landscape()
     write_maxtrix(0, 0, data['raw_data'], ws_raw_data, format_header=fmt.heading)
+
 
 def write_controls_data(workbook, data, cfg, fmt):
     aoi = cfg['aminos_score']
@@ -85,7 +88,7 @@ def write_controls_data(workbook, data, cfg, fmt):
         
         res = dat['result'][aoi]
         # mark invalids 
-        invalids = res[res=='TOO_LOW'].index.to_list() + res[res=='TOO_HIGH'].index.to_list()
+        invalids = res[res == 'TOO_LOW'].index.to_list() + res[res == 'TOO_HIGH'].index.to_list()
         invalids = set(invalids)
         for inv in invalids:
             pos = res.index.get_loc(inv)
@@ -102,18 +105,23 @@ def write_controls_data(workbook, data, cfg, fmt):
             
         row_idx += 1
 
+
 def write_controls_full(workbook, data, cfg, fmt):
-    ws_controls = workbook.add_worksheet('Kontrollen vollständig')    
+    ws_controls = workbook.add_worksheet('Kontrollen')
     ws_controls.set_header('&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N')
     ws_controls.set_footer('&RDatum: &D, &T')
     ws_controls.set_column('A:A', 24.0)
     ws_controls.set_column('B:B', 1.0)  # gap between the patient
     ws_controls.set_column('C:K', 8.0)  # all other columns
-    
-    fmt_border = workbook.add_format({'left': 1, 'right': 1})
-    fmt_border_top = workbook.add_format({'left': 1, 'top': 1, 'right': 1})
-    fmt_border_bottom = workbook.add_format({'left': 1, 'bottom': 1, 'right': 1})
-    
+
+    # split up data into important aminos and secondary aminos
+    aoi_names = cfg['aminos_score']
+    missing_names = sorted(list(set(cfg['aminos_names'].values()) - set(aoi_names)))
+    all_columns = list(data['controls'].columns.values)
+    # re order control columns
+    data['controls'] = data['controls'][all_columns[:2] + aoi_names + missing_names]
+
+    # write first column
     # write score heading
     ws_controls.write(1, 0, 'Score', fmt.heading_right)
     # write all amino names as heading
@@ -124,41 +132,38 @@ def write_controls_full(workbook, data, cfg, fmt):
     for idx, dat in enumerate(data['checked_controls']):
         # write score
         _logger.info(f'Show coarse score for all aminos')
-        res = dat['result']
-        too_high_count = res[res=='TOO_HIGH'].count()
-        too_low_count = res[res=='TOO_LOW'].count()
-        
-        coarse_score = len_aminos - too_high_count - too_low_count
-        ws_controls.write(1, col_idx+idx, f"{coarse_score}/{len_aminos}", fmt.center)
+        ws_controls.write(1, col_idx+idx, f'{dat["coarse_score"]}/{len(cfg["aminos_score"])}', fmt.right)
         # write control name
         control_name = dat['name']
         ws_controls.write(0, col_idx+idx, control_name, fmt.heading_center)
+        # re order control columns
+        dat['raw_data'] = dat['raw_data'][all_columns[:2] + aoi_names + missing_names]
         # write results
         res = dat['raw_data'][2:].astype('float').round(2).to_numpy()
         ws_controls.write_column(2, col_idx+idx, res)
-        
-        if data['selected_control']['name'] == control_name:
-            ws_controls.conditional_format(0, col_idx+idx, 0, col_idx+idx, {'type': 'no_errors', 'format': fmt_border_top})
-            ws_controls.conditional_format(len_aminos+1, col_idx+idx, len_aminos+1, col_idx+idx, {'type': 'no_errors', 'format': fmt_border_bottom})
-            ws_controls.conditional_format(1, col_idx+idx, len_aminos+1, col_idx+idx, {'type': 'no_errors', 'format': fmt_border}) 
-    
-            # mark with gray all invalid aminos
-            result = dat['result']
-            invalids = result[result=='TOO_LOW'].index.to_list() + result[result=='TOO_HIGH'].index.to_list()
-            invalids = set(invalids)
-            amino_names = data['controls'].columns.values.tolist()[2:]
-            _logger.info(f'Mark invalids: {invalids}')
-            for inv in invalids: 
-                idx = amino_names.index(inv) + 2
-                ws_controls.conditional_format(idx, 0, idx, 0, {'type': 'no_errors', 'format': fmt.invalid}) 
-    
+
+        # mark with gray all invalid aminos
+        result = dat['result']
+        invalids = result[result == 'TOO_LOW'].index.to_list() + result[result == 'TOO_HIGH'].index.to_list()
+        invalids = set(invalids)
+        amino_names = data['controls'].columns.values.tolist()[2:]
+        _logger.info(f'Mark invalids: {invalids}')
+        for inv in invalids:
+            row_idx = amino_names.index(inv) + 2
+            ws_controls.conditional_format(row_idx, 0, row_idx, 0, {'type': 'no_errors', 'format': fmt.invalid})
+            ws_controls.conditional_format(row_idx, idx + 2, row_idx, idx + 2, {'type': 'no_errors', 'format': fmt.invalid})
+
+    # add separation between aminos of interest and the rest of them
+    fmt_border_bottom = workbook.add_format({'bottom': 1})
+    ws_controls.conditional_format(28, 0, 28, len(data['checked_controls']) + 1, {'type': 'no_errors', 'format': fmt_border_bottom})
+    ws_controls.conditional_format(1, 0, 1, len(data['checked_controls']) + 1, {'type': 'no_errors', 'format': fmt_border_bottom})
+
     # mark with gray every 3th, 4th row, 7th, 8th etc
     offset = 2
     col_len = len(data['checked_controls']) + 1
     for idx in list(range(len_aminos))[2::4]:
         ws_controls.conditional_format(idx+offset, 0, idx+offset, col_len, {'type': 'no_errors', 'format': fmt.even}) 
         ws_controls.conditional_format(idx+offset+1, 0, idx+offset+1, col_len, {'type': 'no_errors', 'format': fmt.even}) 
-        
 
         
 def write_patients_data(workbook, data, cfg, fmt):    
@@ -167,12 +172,12 @@ def write_patients_data(workbook, data, cfg, fmt):
     ws_patients.set_header('&L&A' + '&CMessergebnisse des Aminosäure-Screenings' + '&RSeite &P von &N')
     ws_patients.set_footer('&RDatum: &D, &T')
     ws_patients.set_column('A:Y', 6.0)  # define all column width
-    ws_patients.set_column("A:B", 5.2)
-    ws_patients.set_column("C:C", 14.5)
-    ws_patients.set_column("M:M", 14.5)
-    ws_patients.set_column("H:H", 3.0)  # gap between the patient
+    ws_patients.set_column('A:B', 5.2)
+    ws_patients.set_column('C:C', 14.5)
+    ws_patients.set_column('M:M', 14.5)
+    ws_patients.set_column('H:H', 3.0)  # gap between the patient
     
-    #format the patient data
+    # format the patient data
     aoi = cfg['aminos_score']
     patients = data['data']
     pat_ref = data['patients_reference']
@@ -183,26 +188,30 @@ def write_patients_data(workbook, data, cfg, fmt):
     # iterate by aminos
     for col in pat_ref.columns.values:
         val_min, val_max = pat_ref.loc[:, col]
-        fmt_map[col][patients[col] < val_min] = 1 # mark as too low
-        fmt_map[col][patients[col] > val_max] = 2 # mark as too high
-    # mark aminos as invalid 
-    res = data['selected_control']['result']
-    invalids = res[res=='TOO_LOW'].index.to_list() + res[res=='TOO_HIGH'].index.to_list()
-    invalids = list(set(invalids) & set(aoi))  # get only the invalids of amino of interest
-    fmt_map[invalids] = -1
-    #print(pat_ref.columns.values)
-    gap_rows = 30
+        fmt_map[col][patients[col] < val_min] = 1  # mark as too low
+        fmt_map[col][patients[col] > val_max] = 2  # mark as too high
+    # mark aminos as invalid
+    co_names = [d['name'] for d in data['checked_controls']]
+    co_names_reduced = [n.replace('_1', '').replace('_2', '').replace('_3', '') for n in co_names]
+    for co in set(co_names_reduced):
+        co_idx_list = [i for i, n in enumerate(co_names_reduced) if n == co]
+        invalids = set(data['checked_controls'][0]['result'].index)  # init with set of all
+        for idx in co_idx_list:
+            res = data['checked_controls'][idx]['result']
+            invalids = invalids & set(res[(res == 'TOO_LOW') | (res == 'TOO_HIGH')].index)
+        fmt_map[list(invalids)] = -1
+
+    gap_rows = 36
     offset_col = 3
     idx_row = 0
     idx_col = offset_col
     second_part = 0
-    fmt_bold = workbook.add_format(cfg['format_heading'])
     
     # reformat array with data. Insert empty column
     amino_names = []
     amino_min = []
     amino_max = []
-    add_empty_row = [3, 6, 9, 12, 15, 18]
+    add_empty_row = [4, 8, 12, 16, 20, 24, 28, 32]
    
     for idx, as_name in enumerate(aoi):                             
         if idx in add_empty_row:
@@ -215,13 +224,12 @@ def write_patients_data(workbook, data, cfg, fmt):
     
     # first four patients are printed, an empty columns follows and the next 4 patients are printed.
     for idx, (_, patient) in enumerate(data['data'].iterrows()):  # to get the line_number instead of the pandas index use enumerate here
-    #for (idx, patient) in data['data'].iterrows():
-        if idx%8 == 0:
+        if idx % 8 == 0:
             idx_row = (idx//8)*gap_rows
             # write min max and amino names
-            ws_patients.write(idx_row, 0, "Normbereich", fmt.heading_left)
-            ws_patients.write(idx_row+1, 0, "min", fmt.heading_center)
-            ws_patients.write(idx_row+1, 1, "max", fmt.heading_center)
+            ws_patients.write(idx_row, 0, 'Normbereich', fmt.heading_left)
+            ws_patients.write(idx_row+1, 0, 'min', fmt.heading_center)
+            ws_patients.write(idx_row+1, 1, 'max', fmt.heading_center)
             ws_patients.write_column(idx_row+2, 0, amino_min, fmt.valid)
             ws_patients.write_column(idx_row+2, 1, amino_max, fmt.valid)
             ws_patients.write_column(idx_row+2, 2, amino_names, fmt.heading_right)
@@ -232,16 +240,18 @@ def write_patients_data(workbook, data, cfg, fmt):
                 pos += pos//3
                 ws_patients.conditional_format(idx_row+2+pos, 12, idx_row+2+pos, 12, {'type': 'no_errors', 'format': fmt.invalid})
                 ws_patients.conditional_format(idx_row+2+pos, 2, idx_row+2+pos, 2, {'type': 'no_errors', 'format': fmt.invalid})
-            
+
+            # set distance between row groups
+            dist_rows = [6, 11, 16, 21, 26, 31]
+            for r in dist_rows:
+                ws_patients.set_row(r + (idx//8)*gap_rows, 10)
             # add page break
-            offset = gap_rows-1
-            ws_patients.set_row(offset + (idx//8)*gap_rows - 1, 45) 
-            ws_patients.set_row(offset + (idx//8)*gap_rows, 45)
+            # ws_patients.set_row((idx//8)*gap_rows - 1, 20)
             
-        if idx%4 == 0 and idx != 0:
+        if idx % 4 == 0 and idx != 0:
             second_part = 1
         # after 8 patients a new page shall start
-        if idx%8 == 0 and idx != 0:
+        if idx % 8 == 0 and idx != 0:
             #idx_row += gap_rows
             idx_col = offset_col
             second_part = 0
@@ -277,7 +287,8 @@ def write_patients_data(workbook, data, cfg, fmt):
             
         # go to the next patient slot
         idx_col += 1
-    
+
+
 def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
     if fmt_nr == -1:
         fmt = wb.add_format(cfg['format_number_invalid'])
@@ -290,7 +301,8 @@ def help_write(cfg, wb, ws, idx_r, idx_c, val, fmt_nr):
     else:
         fmt = wb.add_format(cfg['format_number_valid'])
     ws.write(idx_r, idx_c, val, fmt)
-    
+
+
 def write_maxtrix(idx_row, idx_col, data, worksheet, format_header):
     worksheet.write_row(idx_row, idx_col, data.columns.values.tolist()[1:], format_header)
     idx_row += 1
@@ -300,19 +312,20 @@ def write_maxtrix(idx_row, idx_col, data, worksheet, format_header):
         idx_row += 1    
     
     return idx_row
-    
+
+
 def exceltopdf(doc):
     excel = client.DispatchEx("Excel.Application")
     excel.Visible = 0
 
     wb = excel.Workbooks.Open(doc)
     export_path = os.path.splitext(doc)[0] + '.pdf'
-    wb.WorkSheets([2, 3, 4]).Select()
+    wb.WorkSheets([2, 3]).Select()
     try:
         wb.ActiveSheet.ExportAsFixedFormat(0, export_path)
         os.startfile(export_path)
     except Exception as e:
-        print(f"Failed to convert: {e}")
+        _logger.critical(f'Failed to convert: {e}')
     finally:
         wb.Close()
         excel.Quit()
