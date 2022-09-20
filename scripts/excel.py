@@ -74,7 +74,7 @@ def write_controls_data(workbook, data, cfg, fmt):
     ws_controls.set_column('E:E', 1.0)  # Abstand vor den aminos
     
     row_idx = 3
-    first_invalid = None
+    #first_invalid = None
     for rank, dat in enumerate(data['checked_controls']):
         ws_controls.write(row_idx, 0, rank+1, fmt.center)
         ws_controls.write(row_idx, 1, dat['name'], fmt.heading)
@@ -191,15 +191,18 @@ def write_patients_data(workbook, data, cfg, fmt):
         fmt_map[col][patients[col] < val_min] = 1  # mark as too low
         fmt_map[col][patients[col] > val_max] = 2  # mark as too high
     # mark aminos as invalid
+    all_invalids = []
     co_names = [d['name'] for d in data['checked_controls']]
     co_names_reduced = [n.replace('_1', '').replace('_2', '').replace('_3', '') for n in co_names]
     for co in set(co_names_reduced):
-        co_idx_list = [i for i, n in enumerate(co_names_reduced) if n == co]
+        co_idx_list = [i for i, n in enumerate(co_names_reduced) if n == co]  # get all control idx with matching number
         invalids = set(data['checked_controls'][0]['result'].index)  # init with set of all
         for idx in co_idx_list:
             res = data['checked_controls'][idx]['result']
             invalids = invalids & set(res[(res == 'TOO_LOW') | (res == 'TOO_HIGH')].index)
+        all_invalids.extend(invalids)
         fmt_map[list(invalids)] = -1
+    all_invalids = list(set(all_invalids) & set(aoi))
 
     gap_rows = 36
     offset_col = 3
@@ -235,11 +238,12 @@ def write_patients_data(workbook, data, cfg, fmt):
             ws_patients.write_column(idx_row+2, 2, amino_names, fmt.heading_right)
             ws_patients.write_column(idx_row+2, 12, amino_names, fmt.heading_left)
             
-            for inv in invalids:
+            for inv in all_invalids:
                 pos = aoi.index(inv)
-                pos += pos//3
-                ws_patients.conditional_format(idx_row+2+pos, 12, idx_row+2+pos, 12, {'type': 'no_errors', 'format': fmt.invalid})
-                ws_patients.conditional_format(idx_row+2+pos, 2, idx_row+2+pos, 2, {'type': 'no_errors', 'format': fmt.invalid})
+                pos += pos//4
+                inv_fmt = {'type': 'no_errors', 'format': fmt.invalid}
+                ws_patients.conditional_format(idx_row+2+pos, 12, idx_row+2+pos, 12, inv_fmt)
+                ws_patients.conditional_format(idx_row+2+pos, 2, idx_row+2+pos, 2, inv_fmt)
 
             # set distance between row groups
             dist_rows = [6, 11, 16, 21, 26, 31]

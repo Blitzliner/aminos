@@ -1,13 +1,12 @@
 import sys
 from PyQt5 import QtWidgets, QtCore
 import os
-#import pickle needed for loading data from binary file
-import pandas as pd
 import aminos
 import logging
 import traceback
 
 _logger = logging.getLogger("gui")
+
 
 class Button(QtWidgets.QPushButton):
     def __init__(self, title, parent):
@@ -27,7 +26,7 @@ class Button(QtWidgets.QPushButton):
         if m.hasUrls():
             filepath = m.urls()[0].toLocalFile()
             _logger.info(F"Filepath selected: {filepath}")
-            if (os.path.splitext(filepath)[-1].lower() != ".xlsx"):
+            if os.path.splitext(filepath)[-1].lower() != ".xlsx":
                 self.setText("Netter Versuch..\n\nBitte Rohdaten im Format *.xlsx wählen!")
             else:
                 self.setText("Bitte Analyse starten\n\n.." + filepath[-40:])
@@ -35,7 +34,8 @@ class Button(QtWidgets.QPushButton):
                 
     def get_path(self):
         return self.raw_data_file_path
-  
+
+
 class MainGui(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
@@ -52,41 +52,48 @@ class MainGui(QtWidgets.QDialog):
         btn_run.move(10, 200)
         btn_run.clicked.connect(self.start_analyses)
         
-        self.setWindowTitle('AMINOS v0.1.2')
+        self.setWindowTitle('AMINOS v0.1.3')
         self.setGeometry(400, 400, 350, 250)
         self.setFixedSize(350, 260)
 
     def start_analyses(self):
         if not os.path.isfile(self.button.get_path()):    
-            self.button.setText("Bitte wähle eine Datei aus.")
+            self.button.setText('Bitte wähle eine Datei aus.')
         else:
             try:
                 cfg = aminos.read_config()
-                cfg["file_to_analyze"] = self.button.get_path()
+                cfg['file_to_analyze'] = self.button.get_path()
                 results = aminos.analyse(cfg)
-                selected_control, ret = DateDialog.ShowDialog(results)
-                _logger.info(f'Selected control: {selected_control}')
-                
-                if (ret == False):
-                    _logger.info("re-run with prefered control and AS")
-                    cfg['prefer_control'] = selected_control
-                    data = aminos.analyse(cfg)
-                    msgBox = QtWidgets.QMessageBox()
-                    msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.");
-                    msgBox.exec();
-                    self.close()
-                else:
-                    _logger.info("program finished")
-                    self.close()
+
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setText(f'Erfolgreich abgeschlossen. Die Ergebnisse liegen unter:\n{os.path.abspath(results["export_dir"])}')
+                msg_box.exec()
+
+                # results = aminos.analyse(cfg)
+                #selected_control, ret = DateDialog.ShowDialog(results)
+                #_logger.info(f'Selected control: {selected_control}')
+                #
+                #if ret == False:
+                #    _logger.info("re-run with prefered control and AS")
+                #    cfg['prefer_control'] = selected_control
+                #    data = aminos.analyse(cfg)
+                #    msgBox = QtWidgets.QMessageBox()
+                #    msgBox.setText("Analyse erfolgreich durchgeführt.\nFenster wird geschlossen.")
+                #    msgBox.exec()
+                #    self.close()
+                #else:
+                #    _logger.info("program finished")
+                #    self.close()
             except Exception as e:
                 err_message = F"Unerwarteter Fehler: {e}\nBitte speicher die Rohdaten Exceltabelle als auch die datei 'logger.log' und kontaktiere den Softwareentwickler.\n{traceback.format_exc()}"
                 _logger.error(err_message)
                 msgBox = QtWidgets.QMessageBox()
-                msgBox.setText(err_message);
-                msgBox.exec();
+                msgBox.setText(err_message)
+                msgBox.exec()
+
 
 class DateDialog(QtWidgets.QDialog):
-    def __init__(self, results, parent = None):
+    def __init__(self, results, parent=None):
         super(DateDialog, self).__init__(parent)
         self.setWindowTitle('Analyse Ergebnisse')
         best_control_name = results['checked_controls'][0]['name']
@@ -112,7 +119,7 @@ class DateDialog(QtWidgets.QDialog):
         self.cb_control = QtWidgets.QComboBox()
         self.cb_control.addItems(all_controls)
         
-        main_layout =  QtWidgets.QGridLayout(self)
+        main_layout = QtWidgets.QGridLayout(self)
         main_layout.addWidget(l_description      , 0, 0, 1, 2)
         main_layout.addWidget(l_export_dir       , 1, 0, 1, 2)
         main_layout.addWidget(l_new_analyse      , 2, 0, 1, 2)
@@ -130,7 +137,7 @@ class DateDialog(QtWidgets.QDialog):
         dialog = DateDialog(results, parent)
         result = dialog.exec_()
         dat = dialog.get_data()
-        return (dat, result == QtWidgets.QDialog.Accepted)
+        return dat, result == QtWidgets.QDialog.Accepted
 
 
 def show_main():          
