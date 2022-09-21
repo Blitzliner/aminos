@@ -62,15 +62,24 @@ def read_config(config_file = 'config.json', create_new_file=False):
     return data
 
 
-def read_reference_data(filepath):
-    filepath = os.path.abspath(filepath)
-    _logger.info(F'Read reference file "{os.path.basename(filepath)}"')
-    data = {}
-    if os.path.isfile(filepath):
-        data = pd.read_csv(filepath) 
-    else:
-        _logger.critical(F'File does not exist: {filepath}')
-    return data
+def read_control_reference_data(cfg):
+    d = cfg['control_mean']
+    all = []
+    num_of_controls = len(list(d.items())[0][1].keys())
+    amino_names = d.keys()
+    for control_id in range(1, num_of_controls + 1):
+        for limit_id, limit_type in enumerate(['min', 'mean', 'max']):
+            dat = {'controls': control_id, 'limits': limit_type}
+            for name in amino_names:
+                dat[name] = d[name][str(control_id)][limit_id]
+            all.append(dat)
+
+    df = pd.DataFrame(all)
+    return df
+
+
+def read_patient_reference_data(cfg):
+    return pd.DataFrame(cfg['patient_range'])
 
 
 def read_raw_data(amino_names, filepath):
@@ -99,11 +108,8 @@ def preparation(cfg, raw_data_file):
     export_dir = os.path.join(cfg['export_directory'], timestamp)
     os.makedirs(export_dir, exist_ok=True)
     excel_sheet = timestamp + cfg['file_extension_analysis']
-    
     raw_copy_filename = timestamp + cfg['file_extension_raw_data']
-    
     copyfile(raw_data_file, os.path.join(export_dir, raw_copy_filename))
-    
     return export_dir, excel_sheet
 
 
@@ -132,7 +138,8 @@ def filter_raw_data(cfg, data):
     data[column_name] = data[column_name].astype(str)
     data.sort_values(column_name, axis=0, ascending=True, inplace=True)
     return data, controls
-    
+
+
 def check_controls(cfg, data):
     controls = data['controls']
     control_reference = data['control_reference']
@@ -230,8 +237,8 @@ def analyse(cfg):
     data['export_excel_path'] = excel_path
     data['raw_data'] = read_raw_data(cfg['aminos_names'], cfg['file_to_analyze'])
     data['data'], data['controls'] = filter_raw_data(cfg, data['raw_data'])
-    data['control_reference'] = read_reference_data(cfg['control_reference_file_path'])
-    data['patients_reference'] = read_reference_data(cfg['patients_reference_file_path'])
+    data['control_reference'] = read_control_reference_data(cfg)
+    data['patients_reference'] = read_patient_reference_data(cfg)
     data['checked_controls'] = check_controls(cfg, data)
     #data['selected_control'] = select_control(cfg, data)
     
